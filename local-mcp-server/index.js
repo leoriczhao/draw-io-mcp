@@ -95,14 +95,13 @@ const server = new McpServer({
 // Tool: add_rect
 server.tool(
     'add_rect',
-    'Add a rectangle (vertex) to the Draw.io canvas',
     {
         x: { type: 'number', description: 'X position' },
         y: { type: 'number', description: 'Y position' },
         width: { type: 'number', description: 'Width of the rectangle' },
         height: { type: 'number', description: 'Height of the rectangle' },
         label: { type: 'string', description: 'Text label inside the rectangle' },
-        style: { type: 'string', description: 'mxGraph style string (optional)', optional: true }
+        style: { type: 'string', description: 'mxGraph style string (optional)' }
     },
     async ({ x, y, width, height, label, style }) => {
         const result = await enqueueCommand('add_rect', { x, y, width, height, label, style: style || '' });
@@ -115,11 +114,10 @@ server.tool(
 // Tool: add_edge
 server.tool(
     'add_edge',
-    'Add an edge (connection) between two cells in Draw.io',
     {
         sourceId: { type: 'string', description: 'ID of the source cell' },
         targetId: { type: 'string', description: 'ID of the target cell' },
-        label: { type: 'string', description: 'Edge label (optional)', optional: true }
+        label: { type: 'string', description: 'Edge label (optional)' }
     },
     async ({ sourceId, targetId, label }) => {
         const result = await enqueueCommand('add_edge', { sourceId, targetId, label: label || '' });
@@ -132,7 +130,6 @@ server.tool(
 // Tool: set_style
 server.tool(
     'set_style',
-    'Modify the style of a cell in Draw.io',
     {
         cellId: { type: 'string', description: 'ID of the cell to modify' },
         key: { type: 'string', description: 'Style property name (e.g., fillColor, strokeColor)' },
@@ -149,7 +146,6 @@ server.tool(
 // Tool: get_selection
 server.tool(
     'get_selection',
-    'Get currently selected cells in Draw.io',
     {},
     async () => {
         const result = await enqueueCommand('get_selection', {});
@@ -162,7 +158,6 @@ server.tool(
 // Tool: execute_raw_script
 server.tool(
     'execute_raw_script',
-    'Execute raw JavaScript in the Draw.io browser context. Use variable "graph" to access mxGraph.',
     {
         script: { type: 'string', description: 'JavaScript code to execute. The "graph" variable is available.' }
     },
@@ -177,7 +172,6 @@ server.tool(
 // Tool: clear_diagram
 server.tool(
     'clear_diagram',
-    'Clear all cells from the current diagram',
     {},
     async () => {
         const result = await enqueueCommand('clear_diagram', {});
@@ -190,7 +184,6 @@ server.tool(
 // Tool: get_all_cells
 server.tool(
     'get_all_cells',
-    'Get all cells (vertices and edges) in the diagram',
     {},
     async () => {
         const result = await enqueueCommand('get_all_cells', {});
