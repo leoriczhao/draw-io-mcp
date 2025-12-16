@@ -36,6 +36,7 @@ Draw.loadPlugin(function(ui) {
 
     // Generate unique session ID for this tab
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
+    let currentFilename = 'Untitled';
 
     // ============ Status Bar UI ============
     const statusContainer = document.createElement('div');
@@ -66,7 +67,7 @@ Draw.loadPlugin(function(ui) {
     `;
 
     const statusText = document.createElement('span');
-    statusText.textContent = 'Disconnected';
+    statusText.textContent = 'MCP: Disconnected';
 
     statusContainer.appendChild(statusDot);
     statusContainer.appendChild(statusText);
@@ -74,8 +75,13 @@ Draw.loadPlugin(function(ui) {
 
     function updateStatus(connected, message) {
         statusDot.style.background = connected ? '#44ff44' : '#ff4444';
-        const serverHost = new URL(MCP_SERVER).host;
-        statusText.textContent = message || (connected ? `Connected (${serverHost})` : `Disconnected (${serverHost})`);
+        if (message) {
+            statusText.textContent = message;
+        } else if (connected) {
+            statusText.textContent = `MCP: ${currentFilename}`;
+        } else {
+            statusText.textContent = 'MCP: Disconnected';
+        }
     }
 
     // ============ Command Executor ============
@@ -198,7 +204,7 @@ Draw.loadPlugin(function(ui) {
 
             if (!isConnected) {
                 isConnected = true;
-                updateStatus(true, `Connected (${sessionId.slice(0, 8)})`);
+                updateStatus(true);
                 console.log('[MCP Plugin] Connected to server');
             }
             consecutiveErrors = 0;
@@ -227,16 +233,35 @@ Draw.loadPlugin(function(ui) {
     setInterval(poll, POLL_INTERVAL);
 
     // ============ Focus Tracking ============
+    function getFilename() {
+        try {
+            return ui.editor.getOrCreateFilename ? ui.editor.getOrCreateFilename() : 'Untitled';
+        } catch (e) {
+            return 'Untitled';
+        }
+    }
+
     function sendFocus() {
-        const filename = ui.editor.getOrCreateFilename ? ui.editor.getOrCreateFilename() : 'Untitled';
+        currentFilename = getFilename();
+        if (isConnected) {
+            updateStatus(true);
+        }
         fetch(`${MCP_SERVER}/focus`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, filename })
+            body: JSON.stringify({ sessionId, filename: currentFilename })
         }).catch(() => {});
     }
 
+    // Update filename periodically and on focus
     window.addEventListener('focus', sendFocus);
+    setInterval(() => {
+        const newFilename = getFilename();
+        if (newFilename !== currentFilename) {
+            currentFilename = newFilename;
+            if (isConnected) updateStatus(true);
+        }
+    }, 2000);
     setTimeout(sendFocus, 1000);
 
     console.log('[MCP Plugin] Draw.io MCP Executor loaded');
