@@ -63,9 +63,10 @@ Draw.loadPlugin(function(ui) {
                     }
                 });
 
-                // Auto layout
+                // Auto layout - only for newly created cells
                 if (data.layout) {
-                    this.autoLayout(data.layout);
+                    const newCells = Object.values(cellMap);
+                    this.autoLayout(data.layout, null, newCells);
                 }
             } finally {
                 model.endUpdate();
@@ -90,7 +91,7 @@ Draw.loadPlugin(function(ui) {
         },
 
         // ========== Layout ==========
-        autoLayout: function(type, options) {
+        autoLayout: function(type, options, targetCells) {
             const graph = getGraph();
             const parent = graph.getDefaultParent();
             let layout;
@@ -122,6 +123,16 @@ Draw.loadPlugin(function(ui) {
             }
 
             if (options?.spacing) layout.intraCellSpacing = options.spacing;
+
+            // If targetCells provided, only layout those cells
+            if (targetCells && targetCells.length > 0) {
+                const targetSet = new Set(targetCells.map(c => c.id));
+                const originalIsVertexIgnored = layout.isVertexIgnored.bind(layout);
+                layout.isVertexIgnored = function(vertex) {
+                    if (originalIsVertexIgnored(vertex)) return true;
+                    return !targetSet.has(vertex.id);
+                };
+            }
 
             graph.getModel().beginUpdate();
             try {
@@ -173,7 +184,9 @@ Draw.loadPlugin(function(ui) {
         addPage: function(name) {
             if (ui.insertPage) {
                 const page = ui.insertPage();
-                if (name && page.setName) page.setName(name);
+                if (name && ui.renamePage) {
+                    ui.renamePage(page, name);
+                }
                 return { success: true, pageIndex: ui.pages.indexOf(page) };
             }
             return { success: false, error: 'Multi-page not supported' };
