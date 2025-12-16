@@ -10,6 +10,24 @@ description: Draw diagrams in Draw.io (flowcharts, architecture, mind maps, UML,
 - Flowcharts, architecture diagrams, mind maps, UML, ER diagrams
 - Any visual representation of structure or process
 
+## Workflow
+
+**Always start by checking current canvas state before drawing:**
+
+```javascript
+// Step 1: Check current state
+AI_HLP.getCanvasInfo()
+// Returns: { currentPageIndex, currentPageName, cellCount, pages: [{index, name, isCurrent}] }
+
+// Step 2: Decide page strategy
+// - New diagram on new page → AI_HLP.addPage("Page Name")
+// - Modify existing page → AI_HLP.switchPage("Page Name") or switchPage(index)
+// - Add to current page → skip, just draw
+
+// Step 3: Draw
+AI_HLP.drawBatch({ nodes: [...], edges: [...], layout: "hierarchical" })
+```
+
 ## How to Draw
 
 Use the `execute_script` tool with `AI_HLP.drawBatch()` function.
@@ -54,6 +72,48 @@ AI_HLP.drawBatch({
 - `tree` - Tree structure (org charts, mind maps)
 - `organic` - Force-directed (relationship graphs)
 - `circle` - Circular arrangement
+
+**Note:** Layout only affects newly created elements, existing elements on canvas are preserved.
+
+---
+
+## Page Management
+
+### Query Current State
+```javascript
+AI_HLP.getCanvasInfo()
+// Returns:
+// {
+//   currentPageIndex: 0,
+//   currentPageName: "Page-1",
+//   cellCount: 5,
+//   pages: [
+//     { index: 0, name: "Page-1", isCurrent: true },
+//     { index: 1, name: "Architecture", isCurrent: false }
+//   ]
+// }
+```
+
+### Create New Page
+```javascript
+AI_HLP.addPage("My Diagram")  // Creates and switches to new page with name
+```
+
+### Switch Page
+```javascript
+AI_HLP.switchPage("Page Name")  // By name
+AI_HLP.switchPage(0)            // By index
+```
+
+### When to Create New Page
+- User explicitly asks for a new diagram
+- Drawing unrelated content to existing pages
+- User says "draw X" without specifying where
+
+### When to Use Existing Page
+- User says "add to...", "modify...", "update..."
+- User references existing page by name
+- Adding related content to existing diagram
 
 ---
 
@@ -118,16 +178,18 @@ AI_HLP.drawBatch({
 
 ---
 
-## Other Functions
+## All Functions
 
 | Function | Description |
 |----------|-------------|
-| `AI_HLP.clear()` | Clear canvas |
-| `AI_HLP.autoLayout(type)` | Re-layout existing elements |
-| `AI_HLP.getCanvasInfo()` | Get canvas info |
-| `AI_HLP.getAllCells()` | Get all elements |
+| `AI_HLP.getCanvasInfo()` | Get current page info and all pages list |
+| `AI_HLP.getAllCells()` | Get all elements on current page |
 | `AI_HLP.getSelection()` | Get selected elements |
-| `AI_HLP.addPage(name)` | Add new page |
-| `AI_HLP.switchPage(index)` | Switch page |
+| `AI_HLP.drawBatch({...})` | Batch create nodes and edges |
+| `AI_HLP.clear()` | Clear current page |
+| `AI_HLP.autoLayout(type)` | Re-layout existing elements |
+| `AI_HLP.addPage(name)` | Create and switch to new page |
+| `AI_HLP.switchPage(name/index)` | Switch to existing page |
+| `AI_HLP.renamePage(name)` | Rename current page |
 | `AI_HLP.exportSvg()` | Export as SVG |
 | `AI_HLP.fit()` | Fit view to content |
