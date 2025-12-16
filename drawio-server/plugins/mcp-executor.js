@@ -184,8 +184,9 @@ Draw.loadPlugin(function(ui) {
         addPage: function(name) {
             if (ui.insertPage) {
                 const page = ui.insertPage();
-                if (name && ui.renamePage) {
-                    ui.renamePage(page, name);
+                if (name) {
+                    // Use RenamePage command to immediately update UI
+                    ui.editor.graph.model.execute(new RenamePage(ui, page, name));
                 }
                 return { success: true, pageIndex: ui.pages.indexOf(page) };
             }
