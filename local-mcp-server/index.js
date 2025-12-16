@@ -93,7 +93,8 @@ server.tool(
         },
         required: ['x', 'y', 'width', 'height', 'label']
     },
-    async ({ x, y, width, height, label, style }) => {
+    async (request) => {
+        const { x, y, width, height, label, style } = request.arguments || request;
         const result = await enqueueCommand('add_rect', { x, y, width, height, label, style: style || '' });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
@@ -111,7 +112,8 @@ server.tool(
         },
         required: ['sourceId', 'targetId']
     },
-    async ({ sourceId, targetId, label }) => {
+    async (request) => {
+        const { sourceId, targetId, label } = request.arguments || request;
         const result = await enqueueCommand('add_edge', { sourceId, targetId, label: label || '' });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
@@ -129,7 +131,8 @@ server.tool(
         },
         required: ['cellId', 'key', 'value']
     },
-    async ({ cellId, key, value }) => {
+    async (request) => {
+        const { cellId, key, value } = request.arguments || request;
         const result = await enqueueCommand('set_style', { cellId, key, value });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
@@ -155,7 +158,8 @@ server.tool(
         },
         required: ['script']
     },
-    async ({ script }) => {
+    async (request) => {
+        const { script } = request.arguments || request;
         const result = await enqueueCommand('execute_raw_script', { script });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
