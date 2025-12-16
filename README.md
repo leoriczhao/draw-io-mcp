@@ -56,21 +56,21 @@ npm start
 
 ### 3. 配置 Claude Code
 
-在项目目录下，Claude Code 会自动读取 `.claude/skills/drawio/SKILL.md`，无需额外配置。
+运行安装脚本（配置全局 Skill + MCP Server）:
 
-对于 Claude Desktop，编辑配置文件:
-- Linux: `~/.config/Claude/claude_desktop_config.json`
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+```bash
+./install.sh
+```
 
-```json
-{
-  "mcpServers": {
-    "drawio": {
-      "command": "node",
-      "args": ["/path/to/draw-io-mcp/local-mcp-server/index.js"]
-    }
-  }
-}
+或手动配置:
+
+```bash
+# 安装全局 Skill
+mkdir -p ~/.claude/skills/drawio
+cp .claude/skills/drawio/SKILL.md ~/.claude/skills/drawio/
+
+# 添加全局 MCP Server
+claude mcp add drawio --scope user node $(pwd)/local-mcp-server/index.js
 ```
 
 ### 4. 打开 Draw.io
