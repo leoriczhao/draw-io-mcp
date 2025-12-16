@@ -75,14 +75,14 @@ const server = new McpServer({
 
 server.tool(
     'add_rect',
-    'Add a rectangle to the Draw.io canvas',
+    'Add a rectangle shape to the canvas. Returns the cell ID for later reference (e.g., connecting edges).',
     {
-        x: z.number().describe('X position'),
-        y: z.number().describe('Y position'),
-        width: z.number().describe('Width'),
-        height: z.number().describe('Height'),
-        label: z.string().describe('Text label'),
-        style: z.string().optional().describe('mxGraph style string')
+        x: z.number().describe('X coordinate (pixels from left)'),
+        y: z.number().describe('Y coordinate (pixels from top)'),
+        width: z.number().describe('Width in pixels'),
+        height: z.number().describe('Height in pixels'),
+        label: z.string().describe('Text displayed inside the rectangle'),
+        style: z.string().optional().describe('mxGraph style string, e.g. "rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf"')
     },
     async ({ x, y, width, height, label, style }) => {
         const result = await enqueueCommand('add_rect', { x, y, width, height, label, style: style || '' });
@@ -92,11 +92,11 @@ server.tool(
 
 server.tool(
     'add_edge',
-    'Add an edge between two cells',
+    'Connect two shapes with an arrow/line. Use cell IDs returned from add_rect.',
     {
-        sourceId: z.string().describe('Source cell ID'),
-        targetId: z.string().describe('Target cell ID'),
-        label: z.string().optional().describe('Edge label')
+        sourceId: z.string().describe('ID of the source cell (where arrow starts)'),
+        targetId: z.string().describe('ID of the target cell (where arrow points)'),
+        label: z.string().optional().describe('Text label on the edge')
     },
     async ({ sourceId, targetId, label }) => {
         const result = await enqueueCommand('add_edge', { sourceId, targetId, label: label || '' });
@@ -106,11 +106,11 @@ server.tool(
 
 server.tool(
     'set_style',
-    'Modify cell style',
+    'Modify visual style of an existing cell (color, border, etc.)',
     {
-        cellId: z.string().describe('Cell ID'),
-        key: z.string().describe('Style property name'),
-        value: z.string().describe('Style value')
+        cellId: z.string().describe('ID of the cell to modify'),
+        key: z.string().describe('Style property: fillColor, strokeColor, fontColor, fontSize, rounded, etc.'),
+        value: z.string().describe('Property value, e.g. "#ff0000" for colors, "1" for boolean')
     },
     async ({ cellId, key, value }) => {
         const result = await enqueueCommand('set_style', { cellId, key, value });
@@ -120,7 +120,7 @@ server.tool(
 
 server.tool(
     'get_selection',
-    'Get selected cells',
+    'Get currently selected cells in the diagram. Useful for inspecting user selection.',
     {},
     async () => {
         const result = await enqueueCommand('get_selection', {});
@@ -130,9 +130,17 @@ server.tool(
 
 server.tool(
     'execute_raw_script',
-    'Execute JavaScript in Draw.io context',
+    `Execute JavaScript code directly in Draw.io browser context.
+Available variables:
+- graph: mxGraph instance (bindGraphProperties, insertVertex, insertEdge, getSelectionCells, etc.)
+- model: mxGraphModel (getCell, beginUpdate/endUpdate, etc.)
+- ui: EditorUi (showDialog, sidebar, menus, etc.)
+- editor: Editor instance
+
+Example: "graph.insertVertex(graph.getDefaultParent(), null, 'Hello', 100, 100, 80, 40)"
+Return value of the script will be included in the response.`,
     {
-        script: z.string().describe('JavaScript code. Variable "graph" is available.')
+        script: z.string().describe('JavaScript code to execute. Last expression value is returned.')
     },
     async ({ script }) => {
         const result = await enqueueCommand('execute_raw_script', { script });
@@ -142,7 +150,7 @@ server.tool(
 
 server.tool(
     'clear_diagram',
-    'Clear all cells',
+    'Remove all shapes and edges from the canvas. Use with caution.',
     {},
     async () => {
         const result = await enqueueCommand('clear_diagram', {});
@@ -152,7 +160,7 @@ server.tool(
 
 server.tool(
     'get_all_cells',
-    'Get all cells in diagram',
+    'Get list of all cells (shapes and edges) in the diagram with their properties.',
     {},
     async () => {
         const result = await enqueueCommand('get_all_cells', {});
