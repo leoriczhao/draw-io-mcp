@@ -85,20 +85,13 @@ Draw.loadPlugin(function(ui) {
         const model = graph.getModel();
 
         if (cmd.action === 'execute_raw_script') {
+            if (!cmd.script) {
+                console.error('[MCP Plugin] execute_raw_script: missing script, cmd:', JSON.stringify(cmd));
+                return { success: false, error: 'Missing script parameter' };
+            }
             try {
-                console.log('[DEBUG executeCommand] graph:', graph);
-                console.log('[DEBUG executeCommand] graph === getGraph():', graph === getGraph());
-                console.log('[DEBUG executeCommand] cells before fn:', graph.getChildCells(graph.getDefaultParent(), true, true).length);
-                console.log('[DEBUG executeCommand] cmd.script:', cmd.script);
-                console.log('[DEBUG executeCommand] cmd.script type:', typeof cmd.script);
-                console.log('[DEBUG executeCommand] cmd.script length:', cmd.script.length);
-
                 const fn = new Function('graph', 'ui', 'editor', 'model', cmd.script);
-                console.log('[DEBUG executeCommand] fn created, calling...');
                 const scriptResult = fn(graph, ui, ui.editor, model);
-                console.log('[DEBUG executeCommand] fn returned:', scriptResult);
-                console.log('[DEBUG executeCommand] cells after fn:', graph.getChildCells(graph.getDefaultParent(), true, true).length);
-
                 graph.refresh();
                 return { success: true, result: scriptResult };
             } catch (e) {
@@ -211,27 +204,13 @@ Draw.loadPlugin(function(ui) {
             consecutiveErrors = 0;
 
             if (cmd && cmd.action) {
-                console.log(`[MCP Plugin] Executing: ${cmd.action}`);
-
-                // DEBUG
-                const g = getGraph();
-                const before = g.getChildCells(g.getDefaultParent(), true, true).length;
-                console.log('[DEBUG] graph object:', g);
-                console.log('[DEBUG] cells BEFORE:', before);
-
+                console.log(`[MCP Plugin] Executing: ${cmd.action}`, cmd);
                 const result = window._mcp.executeCommand(cmd);
-
-                // DEBUG
-                const after = g.getChildCells(g.getDefaultParent(), true, true).length;
-                console.log('[DEBUG] cells AFTER:', after);
-                console.log('[DEBUG] diff:', after - before);
-
                 await fetch(`${MCP_SERVER}/result`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ commandId: cmd.id, ...result })
                 });
-
                 console.log(`[MCP Plugin] Result:`, result);
             }
         } catch (e) {
