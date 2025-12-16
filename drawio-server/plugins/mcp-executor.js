@@ -32,7 +32,6 @@ Draw.loadPlugin(function(ui) {
         get editor() { return ui.editor; },
         get graph() { return getGraph(); }
     };
-    console.log('[MCP Plugin] Exposed window._mcp for debugging');
 
     // Generate unique session ID for this tab
     const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
@@ -210,14 +209,12 @@ Draw.loadPlugin(function(ui) {
             consecutiveErrors = 0;
 
             if (cmd && cmd.action) {
-                console.log(`[MCP Plugin] Executing: ${cmd.action}`, cmd);
                 const result = window._mcp.executeCommand(cmd);
                 await fetch(`${MCP_SERVER}/result`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ commandId: cmd.id, ...result })
                 });
-                console.log(`[MCP Plugin] Result:`, result);
             }
         } catch (e) {
             consecutiveErrors++;
@@ -264,7 +261,5 @@ Draw.loadPlugin(function(ui) {
     }, 2000);
     setTimeout(sendFocus, 1000);
 
-    console.log('[MCP Plugin] Draw.io MCP Executor loaded');
-    console.log('[MCP Plugin] Session ID:', sessionId);
-    console.log('[MCP Plugin] MCP Server:', MCP_SERVER);
+    console.log('[MCP Plugin] Loaded, server:', MCP_SERVER);
 });

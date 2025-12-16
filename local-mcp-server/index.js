@@ -26,7 +26,6 @@ app.get('/health', (req, res) => {
 app.get('/poll', (req, res) => {
     if (commandQueue.length > 0) {
         const cmd = commandQueue.shift();
-        console.error(`[Poll] ${cmd.action} (${cmd.id})`);
         res.json(cmd);
     } else {
         res.json(null);
@@ -35,7 +34,6 @@ app.get('/poll', (req, res) => {
 
 app.post('/result', (req, res) => {
     const { commandId, success, error, ...data } = req.body;
-    console.error(`[Result] ${commandId}: ${success ? 'OK' : 'FAIL'}`);
     const pending = pendingResults.get(commandId);
     if (pending) {
         clearTimeout(pending.timeout);
@@ -48,28 +46,24 @@ app.post('/result', (req, res) => {
 app.post('/focus', (req, res) => {
     const { sessionId, filename } = req.body;
     activeSessionId = sessionId;
-    console.error(`[Focus] ${filename || 'unknown'}`);
     res.json({ ok: true });
 });
 
 app.listen(HTTP_PORT, '0.0.0.0', () => {
-    console.error(`[HTTP] Listening on 0.0.0.0:${HTTP_PORT}`);
+    console.error(`[MCP] HTTP server on port ${HTTP_PORT}`);
 });
 
 // ============ Command Helper ============
 function enqueueCommand(action, params) {
-    console.error('[enqueueCommand]', action, JSON.stringify(params));
     return new Promise((resolve) => {
         const commandId = uuidv4();
         const cmd = { id: commandId, action, ...params };
         const timeout = setTimeout(() => {
             pendingResults.delete(commandId);
-            console.error(`[Timeout] ${action} (${commandId})`);
             resolve({ success: false, error: 'Command timeout - is Draw.io plugin running?' });
         }, COMMAND_TIMEOUT);
         pendingResults.set(commandId, { resolve, timeout });
         commandQueue.push(cmd);
-        console.error(`[Queue] ${action} (${commandId})`);
     });
 }
 
