@@ -1,215 +1,309 @@
 /**
- * Draw.io MCP Executor Plugin
+ * Draw.io MCP Executor Plugin v2
  *
- * This plugin connects Draw.io to the MCP Controller server,
- * enabling Claude to directly manipulate the canvas via mxGraph API.
- *
+ * Batch-processing architecture with AI_HLP standard library.
  * Usage: Add ?mcp=http://localhost:3000 to specify MCP server address
  */
 Draw.loadPlugin(function(ui) {
     'use strict';
 
-    // Prevent multiple instances
-    if (window._mcpPluginLoaded) {
-        console.log('[MCP Plugin] Already loaded, skipping duplicate');
-        return;
-    }
+    if (window._mcpPluginLoaded) return;
     window._mcpPluginLoaded = true;
 
-    // Read MCP server address from URL parameter, default to localhost:3000
     const urlParams = new URLSearchParams(window.location.search);
     const MCP_SERVER = urlParams.get('mcp') || 'http://localhost:3000';
     const POLL_INTERVAL = 500;
 
-    // 直接使用 ui.editor.graph,不要缓存
-    function getGraph() {
-        return ui.editor.graph;
+    function getGraph() { return ui.editor.graph; }
+
+    // ============ AI_HLP Standard Library ============
+    const SHAPE_STYLES = {
+        rect: '',
+        rounded: 'rounded=1',
+        ellipse: 'ellipse',
+        rhombus: 'rhombus',
+        parallelogram: 'shape=parallelogram',
+        cylinder: 'shape=cylinder3;whiteSpace=wrap;boundedLbl=1',
+        actor: 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top',
+        note: 'shape=note',
+        cloud: 'ellipse;shape=cloud'
+    };
+
+    window.AI_HLP = {
+        // ========== Core Drawing ==========
+        drawBatch: function(data) {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            const model = graph.getModel();
+            const cellMap = {};
+            let edgesCreated = 0;
+
+            model.beginUpdate();
+            try {
+                // Create nodes
+                (data.nodes || []).forEach(n => {
+                    const shapeStyle = SHAPE_STYLES[n.shape] || SHAPE_STYLES.rect;
+                    const style = shapeStyle + (n.style ? ';' + n.style : '');
+                    const cell = graph.insertVertex(
+                        parent, n.id, n.label || '',
+                        n.x || 0, n.y || 0,
+                        n.w || 120, n.h || 60,
+                        style
+                    );
+                    cellMap[n.id] = cell;
+                });
+
+                // Create edges
+                (data.edges || []).forEach(e => {
+                    const src = cellMap[e.source];
+                    const tgt = cellMap[e.target];
+                    if (src && tgt) {
+                        graph.insertEdge(parent, null, e.label || '', src, tgt, e.style || '');
+                        edgesCreated++;
+                    }
+                });
+
+                // Auto layout
+                if (data.layout) {
+                    this.autoLayout(data.layout);
+                }
+            } finally {
+                model.endUpdate();
+            }
+
+            graph.fit();
+            return { nodesCreated: Object.keys(cellMap).length, edgesCreated };
+        },
+
+        clear: function() {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            const model = graph.getModel();
+            model.beginUpdate();
+            try {
+                const cells = graph.getChildCells(parent, true, true);
+                graph.removeCells(cells);
+            } finally {
+                model.endUpdate();
+            }
+            return { success: true };
+        },
+
+        // ========== Layout ==========
+        autoLayout: function(type, options) {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            let layout;
+
+            switch (type) {
+                case 'tree':
+                    layout = new mxCompactTreeLayout(graph, false);
+                    layout.edgeRouting = false;
+                    layout.levelDistance = 30;
+                    break;
+                case 'organic':
+                    layout = new mxFastOrganicLayout(graph);
+                    layout.forceConstant = 80;
+                    break;
+                case 'circle':
+                    layout = new mxCircleLayout(graph);
+                    break;
+                case 'radial':
+                    layout = new mxRadialTreeLayout(graph);
+                    break;
+                case 'hierarchical':
+                default:
+                    layout = new mxHierarchicalLayout(graph);
+                    if (options?.direction) {
+                        const dirs = { north: 1, south: 2, east: 3, west: 4 };
+                        layout.orientation = dirs[options.direction] || 1;
+                    }
+                    break;
+            }
+
+            if (options?.spacing) layout.intraCellSpacing = options.spacing;
+
+            graph.getModel().beginUpdate();
+            try {
+                layout.execute(parent);
+            } finally {
+                graph.getModel().endUpdate();
+            }
+            return { success: true, type };
+        },
+
+        // ========== Query ==========
+        getCanvasInfo: function() {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            const cells = graph.getChildCells(parent, true, true);
+            return {
+                pageCount: ui.pages ? ui.pages.length : 1,
+                currentPageIndex: ui.pages ? ui.pages.indexOf(ui.currentPage) : 0,
+                currentPageName: ui.currentPage ? ui.currentPage.getName() : 'Page-1',
+                cellCount: cells.length
+            };
+        },
+
+        getAllCells: function() {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            const cells = graph.getChildCells(parent, true, true);
+            return cells.map(c => ({
+                id: c.id,
+                label: c.value || '',
+                type: c.vertex ? 'vertex' : 'edge',
+                geometry: c.geometry ? {
+                    x: c.geometry.x, y: c.geometry.y,
+                    w: c.geometry.width, h: c.geometry.height
+                } : null
+            }));
+        },
+
+        getSelection: function() {
+            const cells = getGraph().getSelectionCells();
+            return cells.map(c => ({
+                id: c.id,
+                label: c.value || '',
+                type: c.vertex ? 'vertex' : 'edge'
+            }));
+        },
+
+        // ========== Page Operations ==========
+        addPage: function(name) {
+            if (ui.insertPage) {
+                const page = ui.insertPage();
+                if (name && page.setName) page.setName(name);
+                return { success: true, pageIndex: ui.pages.indexOf(page) };
+            }
+            return { success: false, error: 'Multi-page not supported' };
+        },
+
+        switchPage: function(indexOrName) {
+            if (!ui.pages) return { success: false, error: 'Multi-page not supported' };
+            let page;
+            if (typeof indexOrName === 'number') {
+                page = ui.pages[indexOrName];
+            } else {
+                page = ui.pages.find(p => p.getName() === indexOrName);
+            }
+            if (page) {
+                ui.selectPage(page);
+                return { success: true };
+            }
+            return { success: false, error: 'Page not found' };
+        },
+
+        renamePage: function(name) {
+            if (ui.currentPage && ui.renamePage) {
+                ui.renamePage(ui.currentPage, name);
+                return { success: true };
+            }
+            return { success: false, error: 'Cannot rename page' };
+        },
+
+        // ========== Export ==========
+        exportSvg: function() {
+            const graph = getGraph();
+            const svgRoot = graph.getSvg();
+            const serializer = new XMLSerializer();
+            return serializer.serializeToString(svgRoot);
+        },
+
+        exportPng: function(scale) {
+            // Note: Full PNG export requires async operations
+            // This returns SVG data URI as fallback
+            const svg = this.exportSvg();
+            return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+        },
+
+        getXml: function() {
+            return mxUtils.getXml(ui.editor.getGraphXml());
+        },
+
+        // ========== View Control ==========
+        fit: function() {
+            getGraph().fit();
+            return { success: true };
+        },
+
+        center: function() {
+            getGraph().center();
+            return { success: true };
+        }
+    };
+
+    // ============ Command Executor (Simplified) ============
+    function executeCommand(cmd) {
+        const graph = getGraph();
+        const model = graph.getModel();
+
+        // Only handle execute_script now
+        if (cmd.action === 'execute_script' || cmd.action === 'execute_raw_script') {
+            if (!cmd.script) {
+                return { success: false, error: 'Missing script parameter' };
+            }
+            try {
+                const fn = new Function('graph', 'ui', 'editor', 'model', 'AI_HLP', cmd.script);
+                const result = fn(graph, ui, ui.editor, model, window.AI_HLP);
+                return { success: true, result };
+            } catch (e) {
+                console.error('[MCP Plugin] Script error:', e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        return { success: false, error: `Unknown action: ${cmd.action}` };
     }
 
     // Expose for debugging
     window._mcp = {
         get ui() { return ui; },
-        get editor() { return ui.editor; },
-        get graph() { return getGraph(); }
+        get graph() { return getGraph(); },
+        executeCommand
     };
 
-    // Generate unique session ID for this tab
-    const sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
-    let currentFilename = 'Untitled';
-
-    // ============ Status Bar UI ============
+    // ============ Status Bar ============
     const statusContainer = document.createElement('div');
     statusContainer.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        position: fixed; top: 10px; right: 10px;
+        background: rgba(0,0,0,0.8); color: white;
+        padding: 8px 12px; border-radius: 6px;
+        font: 12px -apple-system, sans-serif;
+        z-index: 9999; display: flex; align-items: center; gap: 8px;
     `;
-
     const statusDot = document.createElement('span');
-    statusDot.style.cssText = `
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #ff4444;
-        display: inline-block;
-    `;
-
+    statusDot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#ff4444';
     const statusText = document.createElement('span');
     statusText.textContent = 'MCP: Disconnected';
-
-    statusContainer.appendChild(statusDot);
-    statusContainer.appendChild(statusText);
+    statusContainer.append(statusDot, statusText);
     document.body.appendChild(statusContainer);
 
-    function updateStatus(connected, message) {
-        statusDot.style.background = connected ? '#44ff44' : '#ff4444';
-        if (message) {
-            statusText.textContent = message;
-        } else if (connected) {
-            statusText.textContent = `MCP: ${currentFilename}`;
-        } else {
-            statusText.textContent = 'MCP: Disconnected';
-        }
-    }
-
-    // ============ Command Executor ============
-    function executeCommand(cmd) {
-        // 每次都动态获取 graph
-        const graph = getGraph();
-        const model = graph.getModel();
-
-        if (cmd.action === 'execute_raw_script') {
-            if (!cmd.script) {
-                console.error('[MCP Plugin] execute_raw_script: missing script, cmd:', JSON.stringify(cmd));
-                return { success: false, error: 'Missing script parameter' };
-            }
-            try {
-                const fn = new Function('graph', 'ui', 'editor', 'model', cmd.script);
-                const scriptResult = fn(graph, ui, ui.editor, model);
-                graph.refresh();
-                return { success: true, result: scriptResult };
-            } catch (e) {
-                console.error('[MCP Plugin] Script error:', e);
-                return { success: false, error: `Script error: ${e.message}` };
-            }
-        }
-
-        if (cmd.action === 'get_selection') {
-            const cells = graph.getSelectionCells();
-            const result = cells.map(c => ({
-                id: c.id,
-                value: c.value || '',
-                isVertex: c.vertex || false,
-                isEdge: c.edge || false
-            }));
-            return { success: true, cells: result };
-        }
-
-        if (cmd.action === 'get_all_cells') {
-            const parent = graph.getDefaultParent();
-            const cells = graph.getChildCells(parent, true, true);
-            const result = cells.map(c => ({
-                id: c.id,
-                value: c.value || '',
-                isVertex: c.vertex || false,
-                isEdge: c.edge || false,
-                geometry: c.geometry ? {
-                    x: c.geometry.x,
-                    y: c.geometry.y,
-                    width: c.geometry.width,
-                    height: c.geometry.height
-                } : null
-            }));
-            return { success: true, cells: result };
-        }
-
-        // Commands that need transaction wrapping
-        model.beginUpdate();
-        try {
-            switch (cmd.action) {
-                case 'add_rect': {
-                    const parent = graph.getDefaultParent();
-                    const cell = graph.insertVertex(
-                        parent, null, cmd.label || '',
-                        cmd.x || 0, cmd.y || 0,
-                        cmd.width || 120, cmd.height || 60,
-                        cmd.style || ''
-                    );
-                    return { success: true, id: cell.id };
-                }
-
-                case 'add_edge': {
-                    const parent = graph.getDefaultParent();
-                    const source = model.getCell(cmd.sourceId);
-                    const target = model.getCell(cmd.targetId);
-                    if (!source) return { success: false, error: `Source not found: ${cmd.sourceId}` };
-                    if (!target) return { success: false, error: `Target not found: ${cmd.targetId}` };
-                    const edge = graph.insertEdge(parent, null, cmd.label || '', source, target);
-                    return { success: true, id: edge.id };
-                }
-
-                case 'set_style': {
-                    const cell = model.getCell(cmd.cellId);
-                    if (!cell) return { success: false, error: `Cell not found: ${cmd.cellId}` };
-                    graph.setCellStyles(cmd.key, cmd.value, [cell]);
-                    return { success: true };
-                }
-
-                case 'clear_diagram': {
-                    const parent = graph.getDefaultParent();
-                    const cells = graph.getChildCells(parent, true, true);
-                    graph.removeCells(cells);
-                    return { success: true, removed: cells.length };
-                }
-
-                default:
-                    return { success: false, error: `Unknown action: ${cmd.action}` };
-            }
-        } catch (e) {
-            return { success: false, error: e.message };
-        } finally {
-            model.endUpdate();
-        }
-    }
-
-    // Expose executeCommand for debugging
-    window._mcp.executeCommand = executeCommand;
-
-    // ============ Polling Loop ============
     let isConnected = false;
+    let currentFilename = 'Untitled';
+
+    function updateStatus(connected) {
+        statusDot.style.background = connected ? '#44ff44' : '#ff4444';
+        statusText.textContent = connected ? `MCP: ${currentFilename}` : 'MCP: Disconnected';
+    }
+
+    // ============ Polling ============
     let consecutiveErrors = 0;
 
     async function poll() {
         try {
-            const response = await fetch(`${MCP_SERVER}/poll`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const cmd = await response.json();
+            const res = await fetch(`${MCP_SERVER}/poll`);
+            if (!res.ok) throw new Error();
+            const cmd = await res.json();
 
             if (!isConnected) {
                 isConnected = true;
                 updateStatus(true);
-                console.log('[MCP Plugin] Connected to server');
             }
             consecutiveErrors = 0;
 
-            if (cmd && cmd.action) {
-                const result = window._mcp.executeCommand(cmd);
+            if (cmd?.action) {
+                const result = executeCommand(cmd);
                 await fetch(`${MCP_SERVER}/result`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -217,49 +311,28 @@ Draw.loadPlugin(function(ui) {
                 });
             }
         } catch (e) {
-            consecutiveErrors++;
-            if (consecutiveErrors >= 3 && isConnected) {
+            if (++consecutiveErrors >= 3 && isConnected) {
                 isConnected = false;
-                updateStatus(false, 'Disconnected');
-                console.log('[MCP Plugin] Lost connection to server');
+                updateStatus(false);
             }
         }
     }
 
-    // Start polling
     setInterval(poll, POLL_INTERVAL);
 
     // ============ Focus Tracking ============
-    function getFilename() {
-        try {
-            return ui.editor.getOrCreateFilename ? ui.editor.getOrCreateFilename() : 'Untitled';
-        } catch (e) {
-            return 'Untitled';
-        }
-    }
-
     function sendFocus() {
-        currentFilename = getFilename();
-        if (isConnected) {
-            updateStatus(true);
-        }
+        try { currentFilename = ui.editor.getOrCreateFilename() || 'Untitled'; } catch(e) {}
+        if (isConnected) updateStatus(true);
         fetch(`${MCP_SERVER}/focus`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, filename: currentFilename })
+            body: JSON.stringify({ filename: currentFilename })
         }).catch(() => {});
     }
 
-    // Update filename periodically and on focus
     window.addEventListener('focus', sendFocus);
-    setInterval(() => {
-        const newFilename = getFilename();
-        if (newFilename !== currentFilename) {
-            currentFilename = newFilename;
-            if (isConnected) updateStatus(true);
-        }
-    }, 2000);
     setTimeout(sendFocus, 1000);
 
-    console.log('[MCP Plugin] Loaded, server:', MCP_SERVER);
+    console.log('[MCP Plugin v2] Loaded with AI_HLP library');
 });
