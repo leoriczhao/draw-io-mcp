@@ -149,10 +149,14 @@ Draw.loadPlugin(function(ui) {
             const parent = graph.getDefaultParent();
             const cells = graph.getChildCells(parent, true, true);
             return {
-                pageCount: ui.pages ? ui.pages.length : 1,
                 currentPageIndex: ui.pages ? ui.pages.indexOf(ui.currentPage) : 0,
                 currentPageName: ui.currentPage ? ui.currentPage.getName() : 'Page-1',
-                cellCount: cells.length
+                cellCount: cells.length,
+                pages: ui.pages ? ui.pages.map((p, i) => ({
+                    index: i,
+                    name: p.getName(),
+                    isCurrent: p === ui.currentPage
+                })) : [{ index: 0, name: 'Page-1', isCurrent: true }]
             };
         },
 
