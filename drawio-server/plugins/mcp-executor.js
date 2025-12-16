@@ -1,7 +1,7 @@
 /**
- * Draw.io MCP Executor Plugin v2
+ * Draw.io MCP Executor Plugin v3
  *
- * Batch-processing architecture with AI_HLP standard library.
+ * WebSocket-based architecture with AI_HLP standard library.
  * Usage: Add ?mcp=http://localhost:3000 to specify MCP server address
  */
 Draw.loadPlugin(function(ui) {
@@ -12,7 +12,8 @@ Draw.loadPlugin(function(ui) {
 
     const urlParams = new URLSearchParams(window.location.search);
     const MCP_SERVER = urlParams.get('mcp') || 'http://localhost:3000';
-    const POLL_INTERVAL = 500;
+    const WS_URL = MCP_SERVER.replace(/^http/, 'ws');
+    const RECONNECT_INTERVAL = 3000;
 
     function getGraph() { return ui.editor.graph; }
 
@@ -314,52 +315,80 @@ Draw.loadPlugin(function(ui) {
         statusText.textContent = connected ? `MCP: ${currentFilename}` : 'MCP: Disconnected';
     }
 
-    // ============ Polling ============
-    let consecutiveErrors = 0;
+    // ============ WebSocket Connection ============
+    let ws = null;
+    let reconnectTimer = null;
 
-    async function poll() {
+    function connect() {
+        if (ws && ws.readyState === WebSocket.OPEN) return;
+
         try {
-            const res = await fetch(`${MCP_SERVER}/poll`);
-            if (!res.ok) throw new Error();
-            const cmd = await res.json();
-
-            if (!isConnected) {
-                isConnected = true;
-                updateStatus(true);
-            }
-            consecutiveErrors = 0;
-
-            if (cmd?.action) {
-                const result = executeCommand(cmd);
-                await fetch(`${MCP_SERVER}/result`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ commandId: cmd.id, ...result })
-                });
-            }
+            ws = new WebSocket(WS_URL);
         } catch (e) {
-            if (++consecutiveErrors >= 3 && isConnected) {
-                isConnected = false;
-                updateStatus(false);
-            }
+            console.error('[MCP Plugin] WebSocket creation failed:', e);
+            scheduleReconnect();
+            return;
         }
+
+        ws.onopen = () => {
+            console.log('[MCP Plugin] WebSocket connected');
+            isConnected = true;
+            updateStatus(true);
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const cmd = JSON.parse(event.data);
+                if (cmd?.action) {
+                    const result = executeCommand(cmd);
+                    ws.send(JSON.stringify({
+                        type: 'result',
+                        commandId: cmd.id,
+                        result: result
+                    }));
+                }
+            } catch (e) {
+                console.error('[MCP Plugin] Message handling error:', e);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('[MCP Plugin] WebSocket disconnected');
+            isConnected = false;
+            updateStatus(false);
+            ws = null;
+            scheduleReconnect();
+        };
+
+        ws.onerror = (err) => {
+            console.error('[MCP Plugin] WebSocket error');
+            // onclose will be called after onerror
+        };
     }
 
-    setInterval(poll, POLL_INTERVAL);
+    function scheduleReconnect() {
+        if (reconnectTimer) return;
+        reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+        }, RECONNECT_INTERVAL);
+    }
+
+    // Start connection
+    connect();
 
     // ============ Focus Tracking ============
-    function sendFocus() {
+    function updateFilename() {
         try { currentFilename = ui.editor.getOrCreateFilename() || 'Untitled'; } catch(e) {}
         if (isConnected) updateStatus(true);
-        fetch(`${MCP_SERVER}/focus`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename: currentFilename })
-        }).catch(() => {});
     }
 
-    window.addEventListener('focus', sendFocus);
-    setTimeout(sendFocus, 1000);
+    window.addEventListener('focus', updateFilename);
+    setTimeout(updateFilename, 1000);
 
-    console.log('[MCP Plugin v2] Loaded with AI_HLP library');
+    console.log('[MCP Plugin v3] Loaded with WebSocket + AI_HLP library');
 });
