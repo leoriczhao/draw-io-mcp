@@ -10,6 +10,21 @@ description: Draw diagrams in Draw.io (flowcharts, architecture, mind maps, UML,
 - Flowcharts, architecture diagrams, mind maps, UML, ER diagrams
 - Any visual representation of structure or process
 
+## Workflow
+
+**Simple rule:**
+- User specifies page name → `AI_HLP.ensurePage("name")` then draw
+- User doesn't specify → draw directly on current page
+
+```javascript
+// User says "draw X on page Y"
+AI_HLP.ensurePage("Y")  // switches if exists, creates if not
+AI_HLP.drawBatch({...})
+
+// User says "draw X" (no page specified)
+AI_HLP.drawBatch({...})  // draws on current page
+```
+
 ## How to Draw
 
 Use the `execute_script` tool with `AI_HLP.drawBatch()` function.
@@ -54,6 +69,29 @@ AI_HLP.drawBatch({
 - `tree` - Tree structure (org charts, mind maps)
 - `organic` - Force-directed (relationship graphs)
 - `circle` - Circular arrangement
+
+**Note:** Layout only affects newly created elements, existing elements on canvas are preserved.
+
+---
+
+## Page Management
+
+### ensurePage (Recommended)
+```javascript
+AI_HLP.ensurePage("Page Name")
+// If page exists → switches to it
+// If not exists → creates it
+// Returns: { success, action: "switched"|"created", pageIndex }
+```
+
+### Other Page Functions
+```javascript
+AI_HLP.getCanvasInfo()    // Get current state and all pages
+AI_HLP.addPage("Name")    // Always create new page
+AI_HLP.switchPage("Name") // Switch only (fails if not found)
+AI_HLP.switchPage(0)      // Switch by index
+AI_HLP.renamePage("Name") // Rename current page
+```
 
 ---
 
@@ -118,16 +156,19 @@ AI_HLP.drawBatch({
 
 ---
 
-## Other Functions
+## All Functions
 
 | Function | Description |
 |----------|-------------|
-| `AI_HLP.clear()` | Clear canvas |
-| `AI_HLP.autoLayout(type)` | Re-layout existing elements |
-| `AI_HLP.getCanvasInfo()` | Get canvas info |
-| `AI_HLP.getAllCells()` | Get all elements |
+| `AI_HLP.drawBatch({...})` | Batch create nodes and edges |
+| `AI_HLP.ensurePage(name)` | Switch to page if exists, create if not |
+| `AI_HLP.getCanvasInfo()` | Get current page info and all pages list |
+| `AI_HLP.getAllCells()` | Get all elements on current page |
 | `AI_HLP.getSelection()` | Get selected elements |
-| `AI_HLP.addPage(name)` | Add new page |
-| `AI_HLP.switchPage(index)` | Switch page |
+| `AI_HLP.clear()` | Clear current page |
+| `AI_HLP.autoLayout(type)` | Re-layout existing elements |
+| `AI_HLP.addPage(name)` | Always create new page |
+| `AI_HLP.switchPage(name/index)` | Switch to existing page (fails if not found) |
+| `AI_HLP.renamePage(name)` | Rename current page |
 | `AI_HLP.exportSvg()` | Export as SVG |
 | `AI_HLP.fit()` | Fit view to content |
