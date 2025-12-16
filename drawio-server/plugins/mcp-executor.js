@@ -212,6 +212,20 @@ Draw.loadPlugin(function(ui) {
             return { success: false, error: 'Page not found' };
         },
 
+        ensurePage: function(name) {
+            if (!ui.pages) return { success: false, error: 'Multi-page not supported' };
+            // Try to find existing page
+            const existing = ui.pages.find(p => p.getName() === name);
+            if (existing) {
+                ui.selectPage(existing);
+                return { success: true, action: 'switched', pageIndex: ui.pages.indexOf(existing) };
+            }
+            // Create new page
+            const page = ui.insertPage();
+            ui.editor.graph.model.execute(new RenamePage(ui, page, name));
+            return { success: true, action: 'created', pageIndex: ui.pages.indexOf(page) };
+        },
+
         renamePage: function(name) {
             if (ui.currentPage && ui.renamePage) {
                 ui.renamePage(ui.currentPage, name);

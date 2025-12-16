@@ -12,20 +12,17 @@ description: Draw diagrams in Draw.io (flowcharts, architecture, mind maps, UML,
 
 ## Workflow
 
-**Always start by checking current canvas state before drawing:**
+**Simple rule:**
+- User specifies page name → `AI_HLP.ensurePage("name")` then draw
+- User doesn't specify → draw directly on current page
 
 ```javascript
-// Step 1: Check current state
-AI_HLP.getCanvasInfo()
-// Returns: { currentPageIndex, currentPageName, cellCount, pages: [{index, name, isCurrent}] }
+// User says "draw X on page Y"
+AI_HLP.ensurePage("Y")  // switches if exists, creates if not
+AI_HLP.drawBatch({...})
 
-// Step 2: Decide page strategy
-// - New diagram on new page → AI_HLP.addPage("Page Name")
-// - Modify existing page → AI_HLP.switchPage("Page Name") or switchPage(index)
-// - Add to current page → skip, just draw
-
-// Step 3: Draw
-AI_HLP.drawBatch({ nodes: [...], edges: [...], layout: "hierarchical" })
+// User says "draw X" (no page specified)
+AI_HLP.drawBatch({...})  // draws on current page
 ```
 
 ## How to Draw
@@ -79,41 +76,22 @@ AI_HLP.drawBatch({
 
 ## Page Management
 
-### Query Current State
+### ensurePage (Recommended)
 ```javascript
-AI_HLP.getCanvasInfo()
-// Returns:
-// {
-//   currentPageIndex: 0,
-//   currentPageName: "Page-1",
-//   cellCount: 5,
-//   pages: [
-//     { index: 0, name: "Page-1", isCurrent: true },
-//     { index: 1, name: "Architecture", isCurrent: false }
-//   ]
-// }
+AI_HLP.ensurePage("Page Name")
+// If page exists → switches to it
+// If not exists → creates it
+// Returns: { success, action: "switched"|"created", pageIndex }
 ```
 
-### Create New Page
+### Other Page Functions
 ```javascript
-AI_HLP.addPage("My Diagram")  // Creates and switches to new page with name
+AI_HLP.getCanvasInfo()    // Get current state and all pages
+AI_HLP.addPage("Name")    // Always create new page
+AI_HLP.switchPage("Name") // Switch only (fails if not found)
+AI_HLP.switchPage(0)      // Switch by index
+AI_HLP.renamePage("Name") // Rename current page
 ```
-
-### Switch Page
-```javascript
-AI_HLP.switchPage("Page Name")  // By name
-AI_HLP.switchPage(0)            // By index
-```
-
-### When to Create New Page
-- User explicitly asks for a new diagram
-- Drawing unrelated content to existing pages
-- User says "draw X" without specifying where
-
-### When to Use Existing Page
-- User says "add to...", "modify...", "update..."
-- User references existing page by name
-- Adding related content to existing diagram
 
 ---
 
@@ -182,14 +160,15 @@ AI_HLP.drawBatch({
 
 | Function | Description |
 |----------|-------------|
+| `AI_HLP.drawBatch({...})` | Batch create nodes and edges |
+| `AI_HLP.ensurePage(name)` | Switch to page if exists, create if not |
 | `AI_HLP.getCanvasInfo()` | Get current page info and all pages list |
 | `AI_HLP.getAllCells()` | Get all elements on current page |
 | `AI_HLP.getSelection()` | Get selected elements |
-| `AI_HLP.drawBatch({...})` | Batch create nodes and edges |
 | `AI_HLP.clear()` | Clear current page |
 | `AI_HLP.autoLayout(type)` | Re-layout existing elements |
-| `AI_HLP.addPage(name)` | Create and switch to new page |
-| `AI_HLP.switchPage(name/index)` | Switch to existing page |
+| `AI_HLP.addPage(name)` | Always create new page |
+| `AI_HLP.switchPage(name/index)` | Switch to existing page (fails if not found) |
 | `AI_HLP.renamePage(name)` | Rename current page |
 | `AI_HLP.exportSvg()` | Export as SVG |
 | `AI_HLP.fit()` | Fit view to content |
