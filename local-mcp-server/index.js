@@ -154,7 +154,9 @@ server.tool(
         },
         required: ['script']
     },
-    async ({ script }) => {
+    async (params) => {
+        console.error('[DEBUG execute_raw_script] params:', JSON.stringify(params));
+        const script = params.script;
         const result = await enqueueCommand('execute_raw_script', { script });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
