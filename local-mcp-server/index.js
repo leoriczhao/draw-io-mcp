@@ -57,6 +57,7 @@ app.listen(HTTP_PORT, '0.0.0.0', () => {
 
 // ============ Command Helper ============
 function enqueueCommand(action, params) {
+    console.error('[enqueueCommand]', action, JSON.stringify(params));
     return new Promise((resolve) => {
         const commandId = uuidv4();
         const cmd = { id: commandId, action, ...params };
