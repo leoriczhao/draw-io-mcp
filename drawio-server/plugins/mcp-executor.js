@@ -63,14 +63,13 @@ Draw.loadPlugin(function(ui) {
                         edgesCreated++;
                     }
                 });
-
-                // Auto layout - only for newly created cells
-                if (data.layout) {
-                    const newCells = Object.values(cellMap);
-                    this.autoLayout(data.layout, null, newCells);
-                }
             } finally {
                 model.endUpdate();
+            }
+
+            // Layout after transaction commit - no targetCells filter
+            if (data.layout) {
+                this.autoLayout(data.layout);
             }
 
             graph.fit();
