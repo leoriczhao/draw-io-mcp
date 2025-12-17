@@ -18,16 +18,17 @@ Draw.loadPlugin(function(ui) {
     function getGraph() { return ui.editor.graph; }
 
     // ============ AI_HLP Standard Library ============
+    const BASE_STYLE = 'whiteSpace=wrap;html=1;';
     const SHAPE_STYLES = {
-        rect: '',
-        rounded: 'rounded=1',
-        ellipse: 'ellipse',
-        rhombus: 'rhombus',
-        parallelogram: 'shape=parallelogram',
-        cylinder: 'shape=cylinder3;whiteSpace=wrap;boundedLbl=1',
-        actor: 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top',
-        note: 'shape=note',
-        cloud: 'ellipse;shape=cloud'
+        rect: BASE_STYLE + 'rounded=0',
+        rounded: BASE_STYLE + 'rounded=1',
+        ellipse: BASE_STYLE + 'ellipse',
+        rhombus: BASE_STYLE + 'rhombus',
+        parallelogram: BASE_STYLE + 'shape=parallelogram',
+        cylinder: BASE_STYLE + 'shape=cylinder3;boundedLbl=1',
+        actor: BASE_STYLE + 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top',
+        note: BASE_STYLE + 'shape=note',
+        cloud: BASE_STYLE + 'ellipse;shape=cloud'
     };
 
     window.AI_HLP = {
