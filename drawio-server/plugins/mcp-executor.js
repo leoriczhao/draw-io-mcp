@@ -183,14 +183,13 @@ Draw.loadPlugin(function(ui) {
 
         // ========== Page Operations ==========
         addPage: function(name) {
-            if (ui.insertPage) {
-                const page = ui.insertPage();
-                if (name && ui.renamePage) {
-                    ui.renamePage(page, name);
-                }
-                return { success: true, pageIndex: ui.pages.indexOf(page) };
+            if (!ui.insertPage) return { success: false, error: 'Multi-page not supported' };
+            const page = ui.insertPage();
+            if (name) {
+                // Use RenamePage command to avoid dialog
+                ui.editor.graph.model.execute(new RenamePage(ui, page, name));
             }
-            return { success: false, error: 'Multi-page not supported' };
+            return { success: true, pageIndex: ui.pages.indexOf(page) };
         },
 
         switchPage: function(indexOrName) {
@@ -216,18 +215,17 @@ Draw.loadPlugin(function(ui) {
                 ui.selectPage(existing);
                 return { success: true, action: 'switched', pageIndex: ui.pages.indexOf(existing) };
             }
-            // Create new page
+            // Create new page with name (no dialog)
             const page = ui.insertPage();
             ui.editor.graph.model.execute(new RenamePage(ui, page, name));
             return { success: true, action: 'created', pageIndex: ui.pages.indexOf(page) };
         },
 
         renamePage: function(name) {
-            if (ui.currentPage && ui.renamePage) {
-                ui.renamePage(ui.currentPage, name);
-                return { success: true };
-            }
-            return { success: false, error: 'Cannot rename page' };
+            if (!ui.currentPage) return { success: false, error: 'No current page' };
+            // Use RenamePage command to avoid dialog
+            ui.editor.graph.model.execute(new RenamePage(ui, ui.currentPage, name));
+            return { success: true };
         },
 
         // ========== Export ==========
