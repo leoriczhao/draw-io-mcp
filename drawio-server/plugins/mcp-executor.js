@@ -1,7 +1,7 @@
 /**
  * Draw.io MCP Executor Plugin v3
  *
- * WebSocket-based architecture with AI_HLP standard library.
+ * WebSocket-based architecture with read-only AI_HLP helpers.
  * Usage: Add ?mcp=http://localhost:3000 to specify MCP server address
  */
 Draw.loadPlugin(function(ui) {
@@ -17,133 +17,8 @@ Draw.loadPlugin(function(ui) {
 
     function getGraph() { return ui.editor.graph; }
 
-    // ============ AI_HLP Standard Library ============
-    const BASE_STYLE = 'whiteSpace=wrap;html=1;';
-    const SHAPE_STYLES = {
-        rect: BASE_STYLE + 'rounded=0',
-        rounded: BASE_STYLE + 'rounded=1',
-        ellipse: BASE_STYLE + 'ellipse',
-        rhombus: BASE_STYLE + 'rhombus',
-        parallelogram: BASE_STYLE + 'shape=parallelogram',
-        cylinder: BASE_STYLE + 'shape=cylinder3;boundedLbl=1',
-        actor: BASE_STYLE + 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top',
-        note: BASE_STYLE + 'shape=note',
-        cloud: BASE_STYLE + 'ellipse;shape=cloud'
-    };
-
+    // ============ AI_HLP Read-Only Helpers ============
     window.AI_HLP = {
-        // ========== Core Drawing ==========
-        drawBatch: function(data) {
-            const graph = getGraph();
-            const parent = graph.getDefaultParent();
-            const model = graph.getModel();
-            const cellMap = {};
-            let edgesCreated = 0;
-
-            model.beginUpdate();
-            try {
-                // Create nodes
-                (data.nodes || []).forEach(n => {
-                    const shapeStyle = SHAPE_STYLES[n.shape] || SHAPE_STYLES.rect;
-                    const style = shapeStyle + (n.style ? ';' + n.style : '');
-                    const cell = graph.insertVertex(
-                        parent, n.id, n.label || '',
-                        n.x || 0, n.y || 0,
-                        n.w || 120, n.h || 60,
-                        style
-                    );
-                    cellMap[n.id] = cell;
-                });
-
-                // Create edges
-                (data.edges || []).forEach(e => {
-                    const src = cellMap[e.source];
-                    const tgt = cellMap[e.target];
-                    if (src && tgt) {
-                        graph.insertEdge(parent, null, e.label || '', src, tgt, e.style || '');
-                        edgesCreated++;
-                    }
-                });
-            } finally {
-                model.endUpdate();
-            }
-
-            // Layout after transaction commit - no targetCells filter
-            if (data.layout) {
-                this.autoLayout(data.layout);
-            }
-
-            graph.fit();
-            return { nodesCreated: Object.keys(cellMap).length, edgesCreated };
-        },
-
-        clear: function() {
-            const graph = getGraph();
-            const parent = graph.getDefaultParent();
-            const model = graph.getModel();
-            model.beginUpdate();
-            try {
-                const cells = graph.getChildCells(parent, true, true);
-                graph.removeCells(cells);
-            } finally {
-                model.endUpdate();
-            }
-            return { success: true };
-        },
-
-        // ========== Layout ==========
-        autoLayout: function(type, options, targetCells) {
-            const graph = getGraph();
-            const parent = graph.getDefaultParent();
-            let layout;
-
-            switch (type) {
-                case 'tree':
-                    layout = new mxCompactTreeLayout(graph, false);
-                    layout.edgeRouting = false;
-                    layout.levelDistance = 30;
-                    break;
-                case 'organic':
-                    layout = new mxFastOrganicLayout(graph);
-                    layout.forceConstant = 80;
-                    break;
-                case 'circle':
-                    layout = new mxCircleLayout(graph);
-                    break;
-                case 'radial':
-                    layout = new mxRadialTreeLayout(graph);
-                    break;
-                case 'hierarchical':
-                default:
-                    layout = new mxHierarchicalLayout(graph);
-                    if (options?.direction) {
-                        const dirs = { north: 1, south: 2, east: 3, west: 4 };
-                        layout.orientation = dirs[options.direction] || 1;
-                    }
-                    break;
-            }
-
-            if (options?.spacing) layout.intraCellSpacing = options.spacing;
-
-            // If targetCells provided, only layout those cells
-            if (targetCells && targetCells.length > 0) {
-                const targetSet = new Set(targetCells.map(c => c.id));
-                const originalIsVertexIgnored = layout.isVertexIgnored.bind(layout);
-                layout.isVertexIgnored = function(vertex) {
-                    if (originalIsVertexIgnored(vertex)) return true;
-                    return !targetSet.has(vertex.id);
-                };
-            }
-
-            graph.getModel().beginUpdate();
-            try {
-                layout.execute(parent);
-            } finally {
-                graph.getModel().endUpdate();
-            }
-            return { success: true, type };
-        },
-
         // ========== Query ==========
         getCanvasInfo: function() {
             const graph = getGraph();
@@ -181,53 +56,6 @@ Draw.loadPlugin(function(ui) {
             }));
         },
 
-        // ========== Page Operations ==========
-        addPage: function(name) {
-            if (!ui.insertPage) return { success: false, error: 'Multi-page not supported' };
-            const page = ui.insertPage();
-            if (name) {
-                // Use RenamePage command to avoid dialog
-                ui.editor.graph.model.execute(new RenamePage(ui, page, name));
-            }
-            return { success: true, pageIndex: ui.pages.indexOf(page) };
-        },
-
-        switchPage: function(indexOrName) {
-            if (!ui.pages) return { success: false, error: 'Multi-page not supported' };
-            let page;
-            if (typeof indexOrName === 'number') {
-                page = ui.pages[indexOrName];
-            } else {
-                page = ui.pages.find(p => p.getName() === indexOrName);
-            }
-            if (page) {
-                ui.selectPage(page);
-                return { success: true };
-            }
-            return { success: false, error: 'Page not found' };
-        },
-
-        ensurePage: function(name) {
-            if (!ui.pages) return { success: false, error: 'Multi-page not supported' };
-            // Try to find existing page
-            const existing = ui.pages.find(p => p.getName() === name);
-            if (existing) {
-                ui.selectPage(existing);
-                return { success: true, action: 'switched', pageIndex: ui.pages.indexOf(existing) };
-            }
-            // Create new page with name (no dialog)
-            const page = ui.insertPage();
-            ui.editor.graph.model.execute(new RenamePage(ui, page, name));
-            return { success: true, action: 'created', pageIndex: ui.pages.indexOf(page) };
-        },
-
-        renamePage: function(name) {
-            if (!ui.currentPage) return { success: false, error: 'No current page' };
-            // Use RenamePage command to avoid dialog
-            ui.editor.graph.model.execute(new RenamePage(ui, ui.currentPage, name));
-            return { success: true };
-        },
-
         // ========== Export ==========
         exportSvg: function() {
             const graph = getGraph();
@@ -245,17 +73,6 @@ Draw.loadPlugin(function(ui) {
 
         getXml: function() {
             return mxUtils.getXml(ui.editor.getGraphXml());
-        },
-
-        // ========== View Control ==========
-        fit: function() {
-            getGraph().fit();
-            return { success: true };
-        },
-
-        center: function() {
-            getGraph().center();
-            return { success: true };
         }
     };
 
@@ -388,5 +205,5 @@ Draw.loadPlugin(function(ui) {
     window.addEventListener('focus', updateFilename);
     setTimeout(updateFilename, 1000);
 
-    console.log('[MCP Plugin v3] Loaded with WebSocket + AI_HLP library');
+    console.log('[MCP Plugin v3] Loaded with WebSocket + AI_HLP read-only helpers');
 });

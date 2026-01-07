@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "drawio-controller": {
+      "command": "node",
+      "args": [
+        "/home/leoric/code/draw-io-mcp/local-mcp-server/index.js"
+      ]
+    }
+  }
+}
