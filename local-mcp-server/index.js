@@ -110,9 +110,9 @@ const server = new McpServer({
 
 server.tool(
     'execute_script',
-    'Execute JavaScript in Draw.io browser context. Use AI_HLP.drawBatch() for batch diagram creation.',
+    'Execute JavaScript in Draw.io. IMPORTANT: Load the "drawio" skill first to get correct API usage.',
     {
-        script: z.string().describe('JavaScript code to execute. AI_HLP object is available with drawBatch(), clear(), autoLayout(), etc.')
+        script: z.string().describe('JavaScript code to execute. AI_HLP provides read-only helpers like getAllCells(), getSelection(), exportSvg(), getXml(). Use native mxGraph APIs for drawing.')
     },
     async ({ script }) => {
         const result = await sendCommand('execute_script', { script });
