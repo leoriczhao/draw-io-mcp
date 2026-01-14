@@ -1,6 +1,7 @@
 /**
  * Microservice Architecture Template
- * Shows typical microservice components with API Gateway, services, and data stores
+ * Shows typical microservice components with direct horizontal connections
+ * No auto-routing to avoid edge crossings
  */
 
 const graph = ui.editor.graph;
@@ -16,8 +17,8 @@ const STYLE = {
     database: 'shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f5f5f5;strokeColor=#666666;',
     cache: 'fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;',
     queue: 'fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;',
-    edge: 'edgeStyle=orthogonalEdgeStyle;rounded=1;',
-    edgeDashed: 'edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;'
+    edge: 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;',
+    edgeDashed: 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;'
 };
 
 model.beginUpdate();
@@ -43,16 +44,16 @@ try {
     const cache = graph.insertVertex(parent, null, 'Redis Cache', 620, 60, 80, 40, STYLE.base + STYLE.cache);
     const mq = graph.insertVertex(parent, null, 'Message Queue', 620, 120, 80, 40, STYLE.base + STYLE.queue);
 
-    // Edges - clients to gateway
+    // Edges - clients to gateway (straight lines)
     graph.insertEdge(parent, null, '', web, gateway, STYLE.edge);
     graph.insertEdge(parent, null, '', mobile, gateway, STYLE.edge);
 
-    // Edges - gateway to services
+    // Edges - gateway to services (straight lines)
     graph.insertEdge(parent, null, '', gateway, userSvc, STYLE.edge);
     graph.insertEdge(parent, null, '', gateway, orderSvc, STYLE.edge);
     graph.insertEdge(parent, null, '', gateway, productSvc, STYLE.edge);
 
-    // Edges - services to data
+    // Edges - services to data (straight lines)
     graph.insertEdge(parent, null, '', userSvc, userDb, STYLE.edge);
     graph.insertEdge(parent, null, '', orderSvc, orderDb, STYLE.edge);
     graph.insertEdge(parent, null, '', productSvc, productDb, STYLE.edge);

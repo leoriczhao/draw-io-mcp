@@ -47,11 +47,64 @@ graph.insertVertex(parent, 'unique_id', 'Label Text', x, y, width, height,
     'whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;');
 ```
 
-### Create an Edge
+### Create an Edge with Proper Port Constraints and Routing Points
+
+**CRITICAL**: Always specify exitX/exitY/entryX/entryY. For diagrams with many crossing edges, manually set routing points to avoid intersections.
+
 ```javascript
-graph.insertEdge(parent, null, 'edge label', sourceVertex, targetVertex,
-    'edgeStyle=orthogonalEdgeStyle;rounded=1;');
+// Helper function to determine edge style (no auto routing)
+function getEdgeStyle(source, target) {
+    const s = source.geometry;
+    const t = target.geometry;
+    const dx = t.x - (s.x + s.width);
+    const dy = t.y - (s.y + s.height);
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+        return 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
+    } else {
+        return 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;';
+    }
+}
+
+// Create edge with routing points to avoid crossings
+function createEdge(parent, label, source, target, points) {
+    const edge = graph.insertEdge(parent, null, label, source, target, getEdgeStyle(source, target));
+    if (points && points.length > 0) {
+        edge.geometry.points = points.map(p => new mxGeometry(p.x, p.y));
+    }
+    return edge;
+}
+
+// Usage - simple horizontal edge (no points)
+createEdge(parent, '', source, target, null);
+
+// Usage - edge with 2 intermediate points to route around nodes
+createEdge(parent, 'label', source, target, [
+    { x: 300, y: 80 },   // First turn
+    { x: 300, y: 200 }   // Second turn
+]);
 ```
+
+**Routing Best Practices to Avoid Crossings:**
+1. **Horizontal diagrams**: Route edges above/below nodes using Y-offsets
+   - Above: `source.y - 30`
+   - Below: `source.y + source.geometry.height + 30`
+
+2. **Vertical diagrams**: Route edges left/right of nodes using X-offsets
+   - Left: `source.x - 30`
+   - Right: `source.x + source.geometry.width + 30`
+
+3. **Group edges**: Use consistent offset channels for related edges
+
+4. **Calculate midpoints**: For clean L-shapes, use intermediate point at intersection of exit and entry lines
+
+**Edge Style Quick Reference:**
+| Direction | exitX | exitY | entryX | entryY |
+|-----------|-------|-------|--------|--------|
+| Left to Right | 1 | 0.5 | 0 | 0.5 |
+| Right to Left | 0 | 0.5 | 1 | 0.5 |
+| Top to Bottom | 0.5 | 1 | 0.5 | 0 |
+| Bottom to Top | 0.5 | 0 | 0.5 | 1 |
 
 ### Page Management (Dialog-Free)
 ```javascript
