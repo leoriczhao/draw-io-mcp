@@ -1,6 +1,6 @@
 /**
  * Generic Flowchart Template
- * Shows a decision-based process flow
+ * Shows a decision-based process flow with manual edge routing to avoid crossings
  */
 
 const graph = ui.editor.graph;
@@ -15,10 +15,20 @@ const STYLE = {
     process: 'fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;',
     decision: 'rhombus;fillColor=#fff2cc;strokeColor=#d6b656;',
     io: 'shape=parallelogram;fillColor=#e1d5e7;strokeColor=#9673a6;',
-    edge: 'edgeStyle=orthogonalEdgeStyle;rounded=1;',
-    edgeYes: 'edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;',
-    edgeNo: 'edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#b85450;dashed=1;'
+    edgeVertical: 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;',
+    edgeHorizontal: 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;',
+    edgeYes: 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;',
+    edgeNo: 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;dashed=1;'
 };
+
+// Helper to create edge with routing points
+function createEdge(parent, label, source, target, style, points) {
+    const edge = graph.insertEdge(parent, null, label, source, target, style);
+    if (points && points.length > 0) {
+        edge.geometry.points = points.map(p => new mxGeometry(p.x, p.y));
+    }
+    return edge;
+}
 
 model.beginUpdate();
 try {
@@ -42,15 +52,22 @@ try {
     // Branch - No
     const error = graph.insertVertex(parent, null, 'Show Error', 380, 300, 120, 50, STYLE.base + STYLE.process);
 
-    // Edges
-    graph.insertEdge(parent, null, '', start, input, STYLE.edge);
-    graph.insertEdge(parent, null, '', input, process1, STYLE.edge);
-    graph.insertEdge(parent, null, '', process1, decision, STYLE.edge);
-    graph.insertEdge(parent, null, 'Yes', decision, process2, STYLE.edgeYes);
-    graph.insertEdge(parent, null, '', process2, output, STYLE.edge);
-    graph.insertEdge(parent, null, '', output, end, STYLE.edge);
-    graph.insertEdge(parent, null, 'No', decision, error, STYLE.edgeNo);
-    graph.insertEdge(parent, null, '', error, input, STYLE.edgeNo);
+    // Edges - vertical flow (straight lines, no points needed)
+    createEdge(parent, '', start, input, STYLE.edgeVertical, null);
+    createEdge(parent, '', input, process1, STYLE.edgeVertical, null);
+    createEdge(parent, '', process1, decision, STYLE.edgeVertical, null);
+    createEdge(parent, 'Yes', decision, process2, STYLE.edgeYes, null);
+    createEdge(parent, '', process2, output, STYLE.edgeVertical, null);
+    createEdge(parent, '', output, end, STYLE.edgeVertical, null);
+
+    // Edges - "No" branch with routing points to avoid crossing
+    // Decision -> Error (right)
+    createEdge(parent, 'No', decision, error, STYLE.edgeNo, null);
+    // Error -> Input (loop back) - route around decision to avoid crossing
+    createEdge(parent, '', error, input, STYLE.edgeNo, [
+        { x: 320, y: 325 },  // Above error
+        { x: 320, y: 125 }   // Above input
+    ]);
 
 } finally {
     model.endUpdate();

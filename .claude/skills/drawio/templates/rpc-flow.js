@@ -14,8 +14,8 @@ const STYLE = {
     server: 'fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;',
     process: 'fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;',
     data: 'fillColor=#f5f5f5;strokeColor=#666666;rounded=1;',
-    edge: 'edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;',
-    edgeDashed: 'edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;'
+    edge: 'edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;',
+    edgeDashed: 'edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;'
 };
 
 model.beginUpdate();
