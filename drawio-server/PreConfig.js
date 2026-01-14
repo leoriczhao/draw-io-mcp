@@ -10,7 +10,9 @@
         "media-src * data:; " +
         "font-src * about: data:; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        "frame-src 'self' https://*.google.com;";
+        "frame-src 'self' https://*.google.com; " +
+        "worker-src 'self' blob:; " +
+        "child-src 'self' blob:;";
 
     // Insert at the beginning of head
     var firstChild = document.head.firstChild;
