@@ -7,6 +7,19 @@
  * - mxGraph script (used by Draw.io)
  */
 
+function createStandardPorts(nodeId, width, height) {
+    return [
+        { id: `${nodeId}_N`,  x: width/2, y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'NORTH' } },
+        { id: `${nodeId}_S`,  x: width/2, y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'SOUTH' } },
+        { id: `${nodeId}_E`,  x: width,   y: height/2, width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
+        { id: `${nodeId}_W`,  x: 0,       y: height/2, width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } },
+        { id: `${nodeId}_NE`, x: width,   y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
+        { id: `${nodeId}_NW`, x: 0,       y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } },
+        { id: `${nodeId}_SE`, x: width,   y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
+        { id: `${nodeId}_SW`, x: 0,       y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } }
+    ];
+}
+
 /**
  * Convert unified JSON to ELK graph format
  * @param {Object} json - Unified JSON diagram
@@ -28,11 +41,15 @@ export function jsonToElk(json) {
     };
 
     for (const node of json.nodes || []) {
+        const width = node.width || 120;
+        const height = node.height || 60;
+        
         const elkNode = {
             id: node.id,
-            width: node.width || 120,
-            height: node.height || 60,
-            labels: [{ text: node.label || '' }]
+            width: width,
+            height: height,
+            labels: [{ text: node.label || '' }],
+            ports: createStandardPorts(node.id, width, height)
         };
 
         if (node.fixed && node.x !== undefined && node.y !== undefined) {
