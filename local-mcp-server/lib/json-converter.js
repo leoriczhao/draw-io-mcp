@@ -7,6 +7,26 @@
  * - mxGraph script (used by Draw.io)
  */
 
+function anchorToPortPosition(anchor, nodeWidth, nodeHeight) {
+    return {
+        x: (anchor.x || 0.5) * nodeWidth,
+        y: (anchor.y || 0.5) * nodeHeight
+    };
+}
+
+function anchorToSide(anchor) {
+    const x = anchor.x ?? 0.5;
+    const y = anchor.y ?? 0.5;
+    if (y === 0) return 'NORTH';
+    if (y === 1) return 'SOUTH';
+    if (x === 0) return 'WEST';
+    if (x === 1) return 'EAST';
+    if (y < 0.5) return 'NORTH';
+    if (y > 0.5) return 'SOUTH';
+    if (x < 0.5) return 'WEST';
+    return 'EAST';
+}
+
 /**
  * Convert unified JSON to ELK graph format
  * @param {Object} json - Unified JSON diagram
@@ -27,7 +47,54 @@ export function jsonToElk(json) {
         edges: []
     };
 
-    // Convert nodes
+    const nodeMap = new Map();
+    for (const node of json.nodes || []) {
+        nodeMap.set(node.id, node);
+    }
+
+    const nodePorts = new Map();
+
+    for (const edge of json.edges || []) {
+        if (edge.sourceAnchor) {
+            const sourceNode = nodeMap.get(edge.source);
+            if (sourceNode) {
+                const portId = `${edge.source}_port_${edge.sourceAnchor.x}_${edge.sourceAnchor.y}`;
+                if (!nodePorts.has(edge.source)) nodePorts.set(edge.source, []);
+                const ports = nodePorts.get(edge.source);
+                if (!ports.find(p => p.id === portId)) {
+                    const pos = anchorToPortPosition(edge.sourceAnchor, sourceNode.width || 120, sourceNode.height || 60);
+                    ports.push({
+                        id: portId,
+                        x: pos.x,
+                        y: pos.y,
+                        width: 1,
+                        height: 1,
+                        properties: { 'port.side': anchorToSide(edge.sourceAnchor) }
+                    });
+                }
+            }
+        }
+        if (edge.targetAnchor) {
+            const targetNode = nodeMap.get(edge.target);
+            if (targetNode) {
+                const portId = `${edge.target}_port_${edge.targetAnchor.x}_${edge.targetAnchor.y}`;
+                if (!nodePorts.has(edge.target)) nodePorts.set(edge.target, []);
+                const ports = nodePorts.get(edge.target);
+                if (!ports.find(p => p.id === portId)) {
+                    const pos = anchorToPortPosition(edge.targetAnchor, targetNode.width || 120, targetNode.height || 60);
+                    ports.push({
+                        id: portId,
+                        x: pos.x,
+                        y: pos.y,
+                        width: 1,
+                        height: 1,
+                        properties: { 'port.side': anchorToSide(edge.targetAnchor) }
+                    });
+                }
+            }
+        }
+    }
+
     for (const node of json.nodes || []) {
         const elkNode = {
             id: node.id,
@@ -36,7 +103,6 @@ export function jsonToElk(json) {
             labels: [{ text: node.label || '' }]
         };
 
-        // If node has fixed position, add position constraint
         if (node.fixed && node.x !== undefined && node.y !== undefined) {
             elkNode.x = node.x;
             elkNode.y = node.y;
@@ -45,23 +111,41 @@ export function jsonToElk(json) {
             };
         }
 
-        // Store original style for later use
-        elkNode._style = node.style;
+        if (nodePorts.has(node.id)) {
+            elkNode.ports = nodePorts.get(node.id);
+            elkNode.layoutOptions = elkNode.layoutOptions || {};
+            elkNode.layoutOptions['elk.portConstraints'] = 'FIXED_POS';
+        }
 
+        elkNode._style = node.style;
         elkGraph.children.push(elkNode);
     }
 
-    // Convert edges
     for (const edge of json.edges || []) {
+        const edgeId = edge.id || `e_${edge.source}_${edge.target}`;
+        
+        let sourceId = edge.source;
+        let targetId = edge.target;
+        
+        if (edge.sourceAnchor) {
+            sourceId = `${edge.source}_port_${edge.sourceAnchor.x}_${edge.sourceAnchor.y}`;
+        }
+        if (edge.targetAnchor) {
+            targetId = `${edge.target}_port_${edge.targetAnchor.x}_${edge.targetAnchor.y}`;
+        }
+
         const elkEdge = {
-            id: edge.id || `e_${edge.source}_${edge.target}`,
-            sources: [edge.source],
-            targets: [edge.target],
+            id: edgeId,
+            sources: [sourceId],
+            targets: [targetId],
             labels: edge.label ? [{ text: edge.label }] : []
         };
 
-        // Store original style for later use
         elkEdge._style = edge.style;
+        elkEdge._sourceAnchor = edge.sourceAnchor;
+        elkEdge._targetAnchor = edge.targetAnchor;
+        elkEdge._originalSource = edge.source;
+        elkEdge._originalTarget = edge.target;
 
         elkGraph.edges.push(elkEdge);
     }
@@ -82,18 +166,20 @@ export function elkToJson(elkResult, originalJson) {
         layout: originalJson.layout || { algorithm: 'layered', direction: 'DOWN' }
     };
 
-    // Build style lookup from original JSON
     const nodeStyles = new Map();
-    const edgeStyles = new Map();
+    const edgeData = new Map();
     for (const node of originalJson.nodes || []) {
         nodeStyles.set(node.id, node.style);
     }
     for (const edge of originalJson.edges || []) {
         const edgeId = edge.id || `e_${edge.source}_${edge.target}`;
-        edgeStyles.set(edgeId, edge.style);
+        edgeData.set(edgeId, {
+            style: edge.style,
+            sourceAnchor: edge.sourceAnchor,
+            targetAnchor: edge.targetAnchor
+        });
     }
 
-    // Convert nodes with computed positions
     for (const elkNode of elkResult.children || []) {
         result.nodes.push({
             id: elkNode.id,
@@ -102,38 +188,49 @@ export function elkToJson(elkResult, originalJson) {
             y: elkNode.y,
             width: elkNode.width,
             height: elkNode.height,
-            fixed: true, // After layout, all nodes are "fixed"
+            fixed: true,
             style: elkNode._style || nodeStyles.get(elkNode.id) || ''
         });
     }
 
-    // Convert edges with routing points
     for (const elkEdge of elkResult.edges || []) {
-        const edgeData = {
+        const originalSource = elkEdge._originalSource || elkEdge.sources[0];
+        const originalTarget = elkEdge._originalTarget || elkEdge.targets[0];
+        const origData = edgeData.get(elkEdge.id) || {};
+
+        const edgeResult = {
             id: elkEdge.id,
-            source: elkEdge.sources[0],
-            target: elkEdge.targets[0],
+            source: originalSource,
+            target: originalTarget,
             label: elkEdge.labels?.[0]?.text || '',
-            style: elkEdge._style || edgeStyles.get(elkEdge.id) || ''
+            style: elkEdge._style || origData.style || ''
         };
 
-        // Extract routing points from ELK sections
+        if (origData.sourceAnchor) {
+            edgeResult.exitX = origData.sourceAnchor.x;
+            edgeResult.exitY = origData.sourceAnchor.y;
+        }
+        if (origData.targetAnchor) {
+            edgeResult.entryX = origData.targetAnchor.x;
+            edgeResult.entryY = origData.targetAnchor.y;
+        }
+
         if (elkEdge.sections && elkEdge.sections.length > 0) {
             const section = elkEdge.sections[0];
-            edgeData.points = [];
+            edgeResult.points = [];
             
             if (section.startPoint) {
-                edgeData.startPoint = section.startPoint;
+                edgeResult.startPoint = section.startPoint;
             }
             if (section.bendPoints) {
-                edgeData.points = section.bendPoints;
+                edgeResult.points = section.bendPoints;
             }
             if (section.endPoint) {
-                edgeData.endPoint = section.endPoint;
+                edgeResult.endPoint = section.endPoint;
             }
         }
 
-        result.edges.push(edgeData);
+        result.edges.push(edgeResult);
     }
 
     return result;
