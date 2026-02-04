@@ -18,23 +18,16 @@ allowed-tools:
 - Flowcharts, architecture diagrams, mind maps, UML, ER diagrams
 - Any visual representation of structure or process
 
-## Tool Categories
+## Tools
 
-Tools are divided into two categories:
-
-### Platform Tools (平台工具)
-Manage Draw.io application state, independent of diagram content.
-
+### Platform Tools
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get_pages` | List all pages | - |
 | `create_page` | Create new page and switch to it | `name` (optional) |
 | `select_page` | Switch to existing page | `index` or `name` |
-| `rename_page` | Rename current page | `name` |
 
-### Drawing Tools (绘图工具)
-Create and modify diagram content.
-
+### Drawing Tools
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `update_diagram` | Create/update diagram with auto-layout | `diagram` (JSON), `clearCanvas` |
@@ -43,274 +36,114 @@ Create and modify diagram content.
 
 ## Standard Workflow
 
-**ALWAYS follow this pattern for new diagrams:**
-
+**New diagram:**
 ```
-1. create_page({ name: "Diagram Name" })  ← Avoid overwriting existing content
-2. update_diagram({ ... })                 ← Draw the diagram
-```
-
-**For modifying existing diagrams:**
-
-```
-1. select_page({ name: "Target Page" })    ← Switch to target page
-2. get_diagram()                           ← Read current state
-3. update_diagram({ ... })                 ← Apply modifications
+1. create_page({ name: "Diagram Name" })
+2. update_diagram({ ... })
 ```
 
-## Drawing with `update_diagram`
+**Modify existing:**
+```
+1. select_page({ name: "Target Page" })
+2. get_diagram()
+3. update_diagram({ ... })
+```
 
-Use unified JSON format with automatic ELK layout. Best for:
-- Creating new diagrams with automatic layout
-- Adding nodes to existing diagrams
-- Automatic edge routing (no manual coordinates needed)
+## JSON Format
 
+### Basic Example
 ```javascript
 {
   "nodes": [
-    { "id": "start", "label": "Start", "width": 80, "height": 40, "fixed": false },
-    { "id": "process", "label": "Process", "width": 120, "height": 60, "fixed": false },
-    { "id": "end", "label": "End", "width": 80, "height": 40, "fixed": false }
+    { "id": "start", "label": "Start", "width": 80, "height": 40, "fixed": false, "style": "rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" },
+    { "id": "process", "label": "Process", "width": 120, "height": 60, "fixed": false, "style": "fillColor=#dae8fc;strokeColor=#6c8ebf;" },
+    { "id": "decision", "label": "OK?", "width": 100, "height": 60, "fixed": false, "style": "shape=rhombus;fillColor=#fff2cc;strokeColor=#d6b656;" },
+    { "id": "end", "label": "End", "width": 80, "height": 40, "fixed": false, "style": "rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" }
   ],
   "edges": [
     { "source": "start", "target": "process" },
-    { "source": "process", "target": "end" }
+    { "source": "process", "target": "decision" },
+    { "source": "decision", "target": "end", "label": "Yes" }
   ],
   "layout": {
-    "direction": "DOWN",
-    "nodeSpacing": 50,
-    "layerSpacing": 80
+    "preset": "flowchart",
+    "direction": "DOWN"
   }
 }
 ```
 
-**Key Features:**
-- `fixed: false` → ELK computes optimal position
-- `fixed: true` → Node keeps its x/y position
-- Edges are automatically routed to avoid crossings
+### Node Properties
+| Property | Required | Description |
+|----------|----------|-------------|
+| `id` | Yes | Unique identifier |
+| `label` | No | Display text (supports `\n` for newlines) |
+| `width` | No | Width in pixels (default: 120) |
+| `height` | No | Height in pixels (default: 60) |
+| `fixed` | Yes | `false` = auto-layout, `true` = keep x/y position |
+| `style` | No | mxGraph style string |
 
-## Reading with `get_diagram`
-Returns the current diagram as unified JSON. All nodes are marked `fixed: true`.
+### Edge Properties
+| Property | Required | Description |
+|----------|----------|-------------|
+| `source` | Yes | Source node id |
+| `target` | Yes | Target node id |
+| `label` | No | Edge label |
+| `style` | No | mxGraph style string |
 
-Use this to:
-- Understand current diagram structure
-- Modify existing diagrams (read → modify → update)
+### Layout Presets
 
-## Advanced: `execute_script`
-For fine-grained control when JSON format is insufficient.
-
----
-
-## JSON Schema Reference
-
-### Node
-```javascript
-{
-  "id": "unique_id",        // Required: unique identifier
-  "label": "Display Text",  // Optional: node label
-  "x": 100,                 // Optional: x position (required if fixed: true)
-  "y": 200,                 // Optional: y position (required if fixed: true)
-  "width": 120,             // Optional: default 120
-  "height": 60,             // Optional: default 60
-  "fixed": false,           // Required: true=keep position, false=auto-layout
-  "style": "rounded=1;..."  // Optional: mxGraph style string
-}
-```
-
-### Edge
-```javascript
-{
-  "id": "edge_id",          // Optional: auto-generated if not provided
-  "source": "node_id",      // Required: source node id
-  "target": "node_id",      // Required: target node id
-  "label": "Edge Label",    // Optional: edge label
-  "sourceAnchor": { "x": 0.5, "y": 1 },  // Optional: exit point (0-1 relative)
-  "targetAnchor": { "x": 0.5, "y": 0 },  // Optional: entry point (0-1 relative)
-  "style": "dashed=1;..."   // Optional: mxGraph style string
-}
-```
-
-### Anchor Reference
-Anchors control where edges connect to nodes using 0-1 relative coordinates:
-
-| Position | x | y |
-|----------|---|---|
-| Top center | 0.5 | 0 |
-| Bottom center | 0.5 | 1 |
-| Left center | 0 | 0.5 |
-| Right center | 1 | 0.5 |
-| Top-left | 0 | 0 |
-| Top-right | 1 | 0 |
-| Bottom-left | 0 | 1 |
-| Bottom-right | 1 | 1 |
+| Preset | Best For | Direction |
+|--------|----------|-----------|
+| `flowchart` | Process flows, decision trees | DOWN |
+| `architecture` | System architecture, components | DOWN |
+| `workflow` | Pipelines, data flows | RIGHT |
+| `tree` | Hierarchies, org charts | DOWN |
+| `mindmap` | Mind maps, brainstorming | RIGHT |
+| `compact` | Dense diagrams | DOWN |
+| `spread` | Presentation, readability | DOWN |
 
 ### Layout Options
 ```javascript
 {
-  "preset": "flowchart",    // Layout preset (see below)
-  "direction": "DOWN",      // "DOWN", "UP", "LEFT", "RIGHT"
-  "nodeSpacing": 50,        // Pixels between nodes in same layer
-  "layerSpacing": 80,       // Pixels between layers
-  "edgeRouting": "ORTHOGONAL", // "ORTHOGONAL" or "SPLINES"
-  "elkOptions": {}          // Advanced: raw ELK options override
-}
-```
-
-### Layout Presets
-Choose preset based on diagram type:
-
-| Preset | Best For | Direction | Edge Style |
-|--------|----------|-----------|------------|
-| `flowchart` | Process flows, decision trees | DOWN | Orthogonal |
-| `architecture` | System architecture, components | DOWN | Orthogonal, spacious |
-| `workflow` | Pipelines, data flows | RIGHT | Splines (curved) |
-| `tree` | Hierarchies, org charts | DOWN | Tree layout |
-| `mindmap` | Mind maps, brainstorming | RIGHT | Tree layout |
-| `compact` | Dense diagrams, limited space | DOWN | Tight spacing |
-| `spread` | Presentation, readability | DOWN | Extra spacing |
-
-**Example with preset:**
-```javascript
-{
-  "nodes": [...],
-  "edges": [...],
-  "layout": {
-    "preset": "workflow",
-    "direction": "RIGHT"
-  }
+  "preset": "flowchart",      // Layout preset
+  "direction": "DOWN",        // DOWN, UP, LEFT, RIGHT
+  "nodeSpacing": 50,          // Pixels between nodes
+  "layerSpacing": 80          // Pixels between layers
 }
 ```
 
 ## Style Reference
 
-### Common Node Styles
-```
-Primary:   fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;
-Success:   fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;
-Warning:   fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;
-Error:     fillColor=#f8cecc;strokeColor=#b85450;rounded=1;
-Database:  shape=cylinder3;fillColor=#f5f5f5;strokeColor=#666666;
-```
+### Node Styles
+| Type | Style |
+|------|-------|
+| Primary (blue) | `fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;` |
+| Success (green) | `fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;` |
+| Warning (yellow) | `fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;` |
+| Error (red) | `fillColor=#f8cecc;strokeColor=#b85450;rounded=1;` |
+| Neutral (gray) | `fillColor=#f5f5f5;strokeColor=#666666;rounded=1;` |
+| Purple | `fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;` |
 
-### Common Edge Styles
-```
-Standard:  edgeStyle=orthogonalEdgeStyle;rounded=1;
-Dashed:    edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;
-```
+### Shape Styles
+| Shape | Style |
+|-------|-------|
+| Rectangle | `rounded=0;` |
+| Rounded Rect | `rounded=1;` |
+| Diamond | `shape=rhombus;` |
+| Ellipse | `ellipse;` |
+| Cylinder (DB) | `shape=cylinder3;` |
 
----
+### Edge Styles
+| Type | Style |
+|------|-------|
+| Solid | (default) |
+| Dashed | `dashed=1;` |
 
-## Native mxGraph API (Advanced)
+## Shape-Aware Edge Routing
 
-For cases where JSON format is insufficient, use `execute_script` with native API:
+ELK automatically snaps edge anchors to valid connection points:
+- **Rectangle**: Any point on boundary
+- **Diamond (rhombus)**: 4 vertices only (top, right, bottom, left)
+- **Ellipse**: 4 cardinal points
 
-```javascript
-const parent = graph.getDefaultParent();
-
-model.beginUpdate();
-try {
-    // Create vertices and edges here
-} finally {
-    model.endUpdate();
-}
-```
-
-### Required Style Base
-All shapes MUST include this base style for proper anchor points:
-```
-whiteSpace=wrap;html=1;
-```
-
-## Core Patterns
-
-### Create a Vertex
-```javascript
-graph.insertVertex(parent, 'unique_id', 'Label Text', x, y, width, height,
-    'whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;');
-```
-
-### Create an Edge with Proper Port Constraints and Routing Points
-
-**CRITICAL**: Always specify exitX/exitY/entryX/entryY. For diagrams with many crossing edges, manually set routing points to avoid intersections.
-
-```javascript
-// Helper function to determine edge style (no auto routing)
-function getEdgeStyle(source, target) {
-    const s = source.geometry;
-    const t = target.geometry;
-    const dx = t.x - (s.x + s.width);
-    const dy = t.y - (s.y + s.height);
-    
-    if (Math.abs(dx) > Math.abs(dy)) {
-        return 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
-    } else {
-        return 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;';
-    }
-}
-
-// Create edge with routing points to avoid crossings
-function createEdge(parent, label, source, target, points) {
-    const edge = graph.insertEdge(parent, null, label, source, target, getEdgeStyle(source, target));
-    if (points && points.length > 0) {
-        edge.geometry.points = points.map(p => new mxGeometry(p.x, p.y));
-    }
-    return edge;
-}
-
-// Usage - simple horizontal edge (no points)
-createEdge(parent, '', source, target, null);
-
-// Usage - edge with 2 intermediate points to route around nodes
-createEdge(parent, 'label', source, target, [
-    { x: 300, y: 80 },   // First turn
-    { x: 300, y: 200 }   // Second turn
-]);
-```
-
-**Routing Best Practices to Avoid Crossings:**
-1. **Horizontal diagrams**: Route edges above/below nodes using Y-offsets
-   - Above: `source.y - 30`
-   - Below: `source.y + source.geometry.height + 30`
-
-2. **Vertical diagrams**: Route edges left/right of nodes using X-offsets
-   - Left: `source.x - 30`
-   - Right: `source.x + source.geometry.width + 30`
-
-3. **Group edges**: Use consistent offset channels for related edges
-
-4. **Calculate midpoints**: For clean L-shapes, use intermediate point at intersection of exit and entry lines
-
-**Edge Style Quick Reference:**
-| Direction | exitX | exitY | entryX | entryY |
-|-----------|-------|-------|--------|--------|
-| Left to Right | 1 | 0.5 | 0 | 0.5 |
-| Right to Left | 0 | 0.5 | 1 | 0.5 |
-| Top to Bottom | 0.5 | 1 | 0.5 | 0 |
-| Bottom to Top | 0.5 | 0 | 0.5 | 1 |
-
-### Page Management (Dialog-Free)
-```javascript
-// Create new page without dialog
-const page = ui.insertPage();
-ui.editor.graph.model.execute(new RenamePage(ui, page, 'Page Name'));
-
-// Switch to existing page
-const existing = ui.pages.find(p => p.getName() === 'Page Name');
-if (existing) ui.selectPage(existing);
-```
-
-## Templates
-
-See `templates/` directory for ready-to-use diagram templates:
-- `rpc-flow.js` - RPC data flow with serialization
-- `microservice.js` - Microservice architecture
-- `database.js` - Database schema diagrams
-- `flowchart.js` - Generic flowchart
-
-## Style Reference
-
-See `reference/style-guide.md` for:
-- Color palettes
-- Shape styles
-- Edge styles
-- Typography
+No manual anchor configuration needed.
