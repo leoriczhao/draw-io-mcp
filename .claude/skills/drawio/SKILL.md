@@ -108,9 +108,35 @@ allowed-tools:
   "preset": "flowchart",      // Layout preset
   "direction": "DOWN",        // DOWN, UP, LEFT, RIGHT
   "nodeSpacing": 50,          // Pixels between nodes
-  "layerSpacing": 80          // Pixels between layers
+  "layerSpacing": 80,         // Pixels between layers
+  "edgeRouting": "ORTHOGONAL", // ORTHOGONAL or SPLINES
+  "elkOptions": {}            // Advanced: raw ELK options override
 }
 ```
+
+### Advanced ELK Options
+Override any ELK option via `elkOptions`:
+```javascript
+{
+  "layout": {
+    "preset": "flowchart",
+    "elkOptions": {
+      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+      "elk.layered.nodePlacement.favorStraightEdges": "true",
+      "elk.layered.thoroughness": "20"
+    }
+  }
+}
+```
+
+Common ELK options:
+| Option | Values | Description |
+|--------|--------|-------------|
+| `elk.edgeRouting` | `ORTHOGONAL`, `SPLINES`, `POLYLINE` | Edge routing style |
+| `elk.layered.thoroughness` | `1-100` | Layout quality (higher = slower) |
+| `elk.layered.nodePlacement.favorStraightEdges` | `true/false` | Prefer straight edges |
+| `elk.spacing.edgeNode` | pixels | Space between edges and nodes |
+| `elk.spacing.edgeEdge` | pixels | Space between parallel edges |
 
 ## Style Reference
 
