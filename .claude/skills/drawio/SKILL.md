@@ -1,8 +1,10 @@
 ---
 name: drawio
-description: "REQUIRED: Invoke this skill FIRST before using execute_script tool. Draw diagrams in Draw.io (flowcharts, architecture, mind maps, UML, etc). Use when user asks to draw, create diagrams, visualize flows, or design architecture."
+description: "REQUIRED: Invoke this skill FIRST before using Draw.io tools. Draw diagrams in Draw.io (flowcharts, architecture, mind maps, UML, etc). Use when user asks to draw, create diagrams, visualize flows, or design architecture."
 allowed-tools:
   - mcp__drawio-controller__execute_script
+  - mcp__drawio-controller__get_diagram
+  - mcp__drawio-controller__update_diagram
 ---
 
 # Draw.io Diagramming Skill
@@ -12,15 +14,137 @@ allowed-tools:
 - Flowcharts, architecture diagrams, mind maps, UML, ER diagrams
 - Any visual representation of structure or process
 
-## Critical Guidelines
+## Available Tools
 
-### Use Native mxGraph API, NOT AI_HLP
-The `AI_HLP` wrapper has layout issues. Always use native mxGraph API directly:
+### 1. `update_diagram` (RECOMMENDED for new diagrams)
+Use unified JSON format with automatic ELK layout. Best for:
+- Creating new diagrams with automatic layout
+- Adding nodes to existing diagrams
+- Automatic edge routing (no manual coordinates needed)
 
 ```javascript
-const graph = ui.editor.graph;
+// Example: Create a simple flowchart
+{
+  "nodes": [
+    { "id": "start", "label": "Start", "width": 80, "height": 40, "fixed": false },
+    { "id": "process", "label": "Process", "width": 120, "height": 60, "fixed": false },
+    { "id": "end", "label": "End", "width": 80, "height": 40, "fixed": false }
+  ],
+  "edges": [
+    { "source": "start", "target": "process" },
+    { "source": "process", "target": "end" }
+  ],
+  "layout": {
+    "direction": "DOWN",
+    "nodeSpacing": 50,
+    "layerSpacing": 80
+  }
+}
+```
+
+**Key Features:**
+- `fixed: false` → ELK computes optimal position
+- `fixed: true` → Node keeps its x/y position
+- Edges are automatically routed to avoid crossings
+
+### 2. `get_diagram` (Read current diagram)
+Returns the current diagram as unified JSON. All nodes are marked `fixed: true`.
+
+Use this to:
+- Understand current diagram structure
+- Modify existing diagrams (read → modify → update)
+
+### 3. `execute_script` (Advanced: Direct mxGraph API)
+For fine-grained control when JSON format is insufficient.
+
+## Workflow Patterns
+
+### Pattern A: Create New Diagram (Recommended)
+```
+1. Define nodes and edges in JSON
+2. Set all nodes to fixed: false
+3. Call update_diagram
+4. ELK handles layout automatically
+```
+
+### Pattern B: Modify Existing Diagram
+```
+1. Call get_diagram to read current state
+2. Modify the JSON (add/remove/change nodes/edges)
+3. Keep existing nodes as fixed: true
+4. Set new nodes as fixed: false
+5. Call update_diagram
+```
+
+### Pattern C: Precise Control (Advanced)
+```
+1. Use execute_script with native mxGraph API
+2. Manually specify all coordinates
+3. See "Native mxGraph API" section below
+```
+
+## JSON Schema Reference
+
+### Node
+```javascript
+{
+  "id": "unique_id",        // Required: unique identifier
+  "label": "Display Text",  // Optional: node label
+  "x": 100,                 // Optional: x position (required if fixed: true)
+  "y": 200,                 // Optional: y position (required if fixed: true)
+  "width": 120,             // Optional: default 120
+  "height": 60,             // Optional: default 60
+  "fixed": false,           // Required: true=keep position, false=auto-layout
+  "style": "rounded=1;..."  // Optional: mxGraph style string
+}
+```
+
+### Edge
+```javascript
+{
+  "id": "edge_id",          // Optional: auto-generated if not provided
+  "source": "node_id",      // Required: source node id
+  "target": "node_id",      // Required: target node id
+  "label": "Edge Label",    // Optional: edge label
+  "style": "dashed=1;..."   // Optional: mxGraph style string
+}
+```
+
+### Layout Options
+```javascript
+{
+  "algorithm": "layered",   // "layered" (auto) or "fixed" (manual)
+  "direction": "DOWN",      // "DOWN", "UP", "LEFT", "RIGHT"
+  "nodeSpacing": 50,        // Pixels between nodes in same layer
+  "layerSpacing": 80        // Pixels between layers
+}
+```
+
+## Style Reference
+
+### Common Node Styles
+```
+Primary:   fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;
+Success:   fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;
+Warning:   fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;
+Error:     fillColor=#f8cecc;strokeColor=#b85450;rounded=1;
+Database:  shape=cylinder3;fillColor=#f5f5f5;strokeColor=#666666;
+```
+
+### Common Edge Styles
+```
+Standard:  edgeStyle=orthogonalEdgeStyle;rounded=1;
+Dashed:    edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;
+```
+
+---
+
+## Native mxGraph API (Advanced)
+
+For cases where JSON format is insufficient, use `execute_script` with native API:
+
+```javascript
 const parent = graph.getDefaultParent();
-const model = graph.getModel();
 
 model.beginUpdate();
 try {
@@ -35,9 +159,6 @@ All shapes MUST include this base style for proper anchor points:
 ```
 whiteSpace=wrap;html=1;
 ```
-
-### Manual Positioning Over Auto-Layout
-Position nodes manually with explicit x/y coordinates. Auto-layout often produces poor results.
 
 ## Core Patterns
 

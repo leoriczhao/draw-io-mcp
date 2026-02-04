@@ -7,6 +7,8 @@ import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import { layoutWithConstraints } from './lib/elk-layout.js';
+import { validateJson, jsonToMxScript } from './lib/json-converter.js';
 
 // ============ State ============
 const pendingResults = new Map();
@@ -105,7 +107,7 @@ function sendCommand(action, params) {
 // ============ MCP Server ============
 const server = new McpServer({
     name: 'drawio-controller',
-    version: '3.0.0'
+    version: '4.0.0'
 });
 
 server.tool(
@@ -120,11 +122,51 @@ server.tool(
     }
 );
 
+server.tool(
+    'get_diagram',
+    'Get current diagram as unified JSON format. Returns nodes with positions and edges with connections. All nodes are marked fixed:true.',
+    {},
+    async () => {
+        const result = await sendCommand('get_diagram_json', {});
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    'update_diagram',
+    'Update diagram with unified JSON format. Nodes with fixed:false get automatic layout via ELK. Edges are automatically routed.',
+    {
+        diagram: z.string().describe('JSON string with nodes, edges, and layout options. Nodes: {id, label, x?, y?, width?, height?, fixed, style?}. Edges: {id?, source, target, label?, style?}. Layout: {algorithm?, direction?, nodeSpacing?, layerSpacing?}'),
+        clearCanvas: z.boolean().optional().describe('Whether to clear existing content before applying. Default: true')
+    },
+    async ({ diagram, clearCanvas = true }) => {
+        try {
+            const json = JSON.parse(diagram);
+            
+            const validation = validateJson(json);
+            if (!validation.valid) {
+                return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Validation failed: ' + validation.errors.join(', ') }) }] };
+            }
+
+            const layoutedDiagram = await layoutWithConstraints(json);
+            
+            const result = await sendCommand('apply_diagram_json', { 
+                diagram: layoutedDiagram,
+                clearCanvas 
+            });
+            
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        } catch (e) {
+            return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: e.message }) }] };
+        }
+    }
+);
+
 // ============ Start ============
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('[MCP] Draw.io Controller v3 (WebSocket) ready');
+    console.error('[MCP] Draw.io Controller v4 (WebSocket + ELK Layout) ready');
 }
 
 main().catch((err) => {

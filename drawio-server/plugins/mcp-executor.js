@@ -73,15 +73,62 @@ Draw.loadPlugin(function(ui) {
 
         getXml: function() {
             return mxUtils.getXml(ui.editor.getGraphXml());
+        },
+
+        // ========== Unified JSON Format ==========
+        /**
+         * Get diagram as unified JSON format
+         * All nodes are marked as fixed: true (preserving current positions)
+         */
+        getDiagramJson: function() {
+            const graph = getGraph();
+            const parent = graph.getDefaultParent();
+            const cells = graph.getChildCells(parent, true, true);
+            
+            const nodes = [];
+            const edges = [];
+            
+            for (const cell of cells) {
+                if (cell.vertex) {
+                    nodes.push({
+                        id: cell.id,
+                        label: cell.value || '',
+                        x: cell.geometry ? cell.geometry.x : 0,
+                        y: cell.geometry ? cell.geometry.y : 0,
+                        width: cell.geometry ? cell.geometry.width : 120,
+                        height: cell.geometry ? cell.geometry.height : 60,
+                        fixed: true,
+                        style: cell.style || ''
+                    });
+                } else if (cell.edge) {
+                    edges.push({
+                        id: cell.id,
+                        source: cell.source ? cell.source.id : null,
+                        target: cell.target ? cell.target.id : null,
+                        label: cell.value || '',
+                        style: cell.style || ''
+                    });
+                }
+            }
+            
+            return {
+                nodes,
+                edges,
+                layout: {
+                    algorithm: 'layered',
+                    direction: 'DOWN',
+                    nodeSpacing: 50,
+                    layerSpacing: 80
+                }
+            };
         }
     };
 
-    // ============ Command Executor (Simplified) ============
+    // ============ Command Executor ============
     function executeCommand(cmd) {
         const graph = getGraph();
         const model = graph.getModel();
 
-        // Only handle execute_script now
         if (cmd.action === 'execute_script' || cmd.action === 'execute_raw_script') {
             if (!cmd.script) {
                 return { success: false, error: 'Missing script parameter' };
@@ -92,6 +139,71 @@ Draw.loadPlugin(function(ui) {
                 return { success: true, result };
             } catch (e) {
                 console.error('[MCP Plugin] Script error:', e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'get_diagram_json') {
+            try {
+                const result = window.AI_HLP.getDiagramJson();
+                return { success: true, result };
+            } catch (e) {
+                console.error('[MCP Plugin] getDiagramJson error:', e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'apply_diagram_json') {
+            if (!cmd.diagram) {
+                return { success: false, error: 'Missing diagram parameter' };
+            }
+            try {
+                const diagram = typeof cmd.diagram === 'string' ? JSON.parse(cmd.diagram) : cmd.diagram;
+                const parent = graph.getDefaultParent();
+                
+                model.beginUpdate();
+                try {
+                    if (cmd.clearCanvas !== false) {
+                        const existingCells = graph.getChildCells(parent, true, true);
+                        if (existingCells.length > 0) {
+                            graph.removeCells(existingCells);
+                        }
+                    }
+
+                    const nodeMap = {};
+                    
+                    for (const node of diagram.nodes || []) {
+                        const style = node.style || 'whiteSpace=wrap;html=1;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;';
+                        const vertex = graph.insertVertex(
+                            parent, node.id, node.label || '',
+                            node.x, node.y, node.width || 120, node.height || 60,
+                            style
+                        );
+                        nodeMap[node.id] = vertex;
+                    }
+
+                    for (const edge of diagram.edges || []) {
+                        const source = nodeMap[edge.source];
+                        const target = nodeMap[edge.target];
+                        if (source && target) {
+                            const style = edge.style || 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+                            const edgeCell = graph.insertEdge(
+                                parent, edge.id, edge.label || '',
+                                source, target, style
+                            );
+                            
+                            if (edge.points && edge.points.length > 0) {
+                                edgeCell.geometry.points = edge.points.map(p => new mxPoint(p.x, p.y));
+                            }
+                        }
+                    }
+                } finally {
+                    model.endUpdate();
+                }
+                
+                return { success: true, result: 'Diagram applied successfully' };
+            } catch (e) {
+                console.error('[MCP Plugin] applyDiagramJson error:', e);
                 return { success: false, error: e.message };
             }
         }
