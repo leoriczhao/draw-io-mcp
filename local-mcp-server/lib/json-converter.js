@@ -10,9 +10,72 @@
 import { buildLayoutOptions } from './elk-presets.js';
 
 /**
+ * Detect shape type from mxGraph style string
+ */
+function detectShapeType(style) {
+    if (!style) return 'rectangle';
+    if (style.includes('rhombus')) return 'rhombus';
+    if (style.includes('ellipse') && !style.includes('cloud')) return 'ellipse';
+    if (style.includes('triangle')) return 'triangle';
+    if (style.includes('hexagon')) return 'hexagon';
+    if (style.includes('cylinder')) return 'cylinder';
+    return 'rectangle';
+}
+
+/**
+ * Snap anchor to valid connection points based on shape type
+ * Returns anchor that lies on the actual shape perimeter
+ */
+function snapAnchorToShape(x, y, shapeType) {
+    switch (shapeType) {
+        case 'rhombus': {
+            // Diamond vertices: N(0.5,0), E(1,0.5), S(0.5,1), W(0,0.5)
+            const vertices = [
+                { x: 0.5, y: 0 },
+                { x: 1, y: 0.5 },
+                { x: 0.5, y: 1 },
+                { x: 0, y: 0.5 }
+            ];
+            let minDist = Infinity;
+            let nearest = vertices[0];
+            for (const v of vertices) {
+                const dist = (x - v.x) ** 2 + (y - v.y) ** 2;
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = v;
+                }
+            }
+            return nearest;
+        }
+        
+        case 'ellipse': {
+            // For ellipse, snap to 4 cardinal points
+            const vertices = [
+                { x: 0.5, y: 0 },
+                { x: 1, y: 0.5 },
+                { x: 0.5, y: 1 },
+                { x: 0, y: 0.5 }
+            ];
+            let minDist = Infinity;
+            let nearest = vertices[0];
+            for (const v of vertices) {
+                const dist = (x - v.x) ** 2 + (y - v.y) ** 2;
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = v;
+                }
+            }
+            return nearest;
+        }
+        
+        default:
+            // Rectangle: keep original anchor (ELK handles rectangles well)
+            return { x, y };
+    }
+}
+
+/**
  * Convert unified JSON to ELK graph format
- * @param {Object} json - Unified JSON diagram
- * @returns {Object} ELK graph format
  */
 export function jsonToElk(json) {
     const layoutOptions = buildLayoutOptions(json.layout);
@@ -44,6 +107,7 @@ export function jsonToElk(json) {
         }
 
         elkNode._style = node.style;
+        elkNode._shapeType = detectShapeType(node.style);
         elkGraph.children.push(elkNode);
     }
 
@@ -64,9 +128,7 @@ export function jsonToElk(json) {
 
 /**
  * Convert ELK layout result back to unified JSON
- * @param {Object} elkResult - ELK layout result
- * @param {Object} originalJson - Original unified JSON (for style preservation)
- * @returns {Object} Unified JSON with computed positions
+ * Applies shape-aware anchor snapping for non-rectangular shapes
  */
 export function elkToJson(elkResult, originalJson) {
     const result = {
@@ -95,7 +157,8 @@ export function elkToJson(elkResult, originalJson) {
             width: elkNode.width,
             height: elkNode.height,
             fixed: true,
-            style: elkNode._style || nodeStyles.get(elkNode.id) || ''
+            style: elkNode._style || nodeStyles.get(elkNode.id) || '',
+            _shapeType: elkNode._shapeType || detectShapeType(elkNode._style || nodeStyles.get(elkNode.id))
         };
         result.nodes.push(nodeData);
         nodeMap.set(elkNode.id, nodeData);
@@ -117,12 +180,23 @@ export function elkToJson(elkResult, originalJson) {
             const targetNode = nodeMap.get(edgeResult.target);
             
             if (sourceNode && section.startPoint) {
-                edgeResult.exitX = (section.startPoint.x - sourceNode.x) / sourceNode.width;
-                edgeResult.exitY = (section.startPoint.y - sourceNode.y) / sourceNode.height;
+                let exitX = (section.startPoint.x - sourceNode.x) / sourceNode.width;
+                let exitY = (section.startPoint.y - sourceNode.y) / sourceNode.height;
+                
+                // Snap to shape perimeter for non-rectangular shapes
+                const snapped = snapAnchorToShape(exitX, exitY, sourceNode._shapeType);
+                edgeResult.exitX = snapped.x;
+                edgeResult.exitY = snapped.y;
             }
+            
             if (targetNode && section.endPoint) {
-                edgeResult.entryX = (section.endPoint.x - targetNode.x) / targetNode.width;
-                edgeResult.entryY = (section.endPoint.y - targetNode.y) / targetNode.height;
+                let entryX = (section.endPoint.x - targetNode.x) / targetNode.width;
+                let entryY = (section.endPoint.y - targetNode.y) / targetNode.height;
+                
+                // Snap to shape perimeter for non-rectangular shapes
+                const snapped = snapAnchorToShape(entryX, entryY, targetNode._shapeType);
+                edgeResult.entryX = snapped.x;
+                edgeResult.entryY = snapped.y;
             }
             
             if (section.bendPoints && section.bendPoints.length > 0) {
