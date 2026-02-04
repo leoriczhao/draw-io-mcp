@@ -121,6 +121,23 @@ Draw.loadPlugin(function(ui) {
                     layerSpacing: 80
                 }
             };
+        },
+
+        // ========== Page Management ==========
+        getPages: function() {
+            if (!ui.pages) return [{ index: 0, name: 'Page-1', current: true }];
+            return ui.pages.map((page, index) => ({
+                index,
+                name: page.getName(),
+                current: page === ui.currentPage
+            }));
+        },
+
+        getCurrentPage: function() {
+            return {
+                index: ui.pages ? ui.pages.indexOf(ui.currentPage) : 0,
+                name: ui.currentPage ? ui.currentPage.getName() : 'Page-1'
+            };
         }
     };
 
@@ -172,10 +189,20 @@ Draw.loadPlugin(function(ui) {
 
                     const nodeMap = {};
                     
+                    // Helper to convert all newline variants to <br>
+                    function toHtmlLabel(text) {
+                        if (!text) return '';
+                        return String(text)
+                            .replace(/\\\\n/g, '<br>')  // \\n (double escaped)
+                            .replace(/\\n/g, '<br>')   // \n (escaped)
+                            .replace(/\n/g, '<br>');   // actual newline
+                    }
+
                     for (const node of diagram.nodes || []) {
                         const style = node.style || 'whiteSpace=wrap;html=1;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;';
+                        const label = toHtmlLabel(node.label);
                         const vertex = graph.insertVertex(
-                            parent, node.id, node.label || '',
+                            parent, node.id, label,
                             node.x, node.y, node.width || 120, node.height || 60,
                             style
                         );
@@ -187,8 +214,9 @@ Draw.loadPlugin(function(ui) {
                         const target = nodeMap[edge.target];
                         if (source && target) {
                             const style = edge.style || 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+                            const label = toHtmlLabel(edge.label);
                             const edgeCell = graph.insertEdge(
-                                parent, edge.id, edge.label || '',
+                                parent, edge.id, label,
                                 source, target, style
                             );
                             
@@ -204,6 +232,59 @@ Draw.loadPlugin(function(ui) {
                 return { success: true, result: 'Diagram applied successfully' };
             } catch (e) {
                 console.error('[MCP Plugin] applyDiagramJson error:', e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'get_pages') {
+            try {
+                const result = window.AI_HLP.getPages();
+                return { success: true, result };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'create_page') {
+            try {
+                const pageName = cmd.name || 'New Page';
+                const page = ui.insertPage();
+                if (page && pageName) {
+                    ui.editor.graph.model.execute(new RenamePage(ui, page, pageName));
+                }
+                return { success: true, result: { name: pageName, index: ui.pages.indexOf(page) } };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'select_page') {
+            try {
+                let page = null;
+                if (typeof cmd.index === 'number' && ui.pages && ui.pages[cmd.index]) {
+                    page = ui.pages[cmd.index];
+                } else if (cmd.name && ui.pages) {
+                    page = ui.pages.find(p => p.getName() === cmd.name);
+                }
+                if (page) {
+                    ui.selectPage(page);
+                    return { success: true, result: { name: page.getName(), index: ui.pages.indexOf(page) } };
+                }
+                return { success: false, error: 'Page not found' };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (cmd.action === 'rename_page') {
+            try {
+                const page = ui.currentPage;
+                if (page && cmd.name) {
+                    ui.editor.graph.model.execute(new RenamePage(ui, page, cmd.name));
+                    return { success: true, result: { name: cmd.name } };
+                }
+                return { success: false, error: 'No current page or missing name' };
+            } catch (e) {
                 return { success: false, error: e.message };
             }
         }

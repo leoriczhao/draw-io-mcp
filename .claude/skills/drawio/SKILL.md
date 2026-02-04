@@ -5,6 +5,10 @@ allowed-tools:
   - mcp__drawio-controller__execute_script
   - mcp__drawio-controller__get_diagram
   - mcp__drawio-controller__update_diagram
+  - mcp__drawio-controller__get_pages
+  - mcp__drawio-controller__create_page
+  - mcp__drawio-controller__select_page
+  - mcp__drawio-controller__rename_page
 ---
 
 # Draw.io Diagramming Skill
@@ -15,6 +19,24 @@ allowed-tools:
 - Any visual representation of structure or process
 
 ## Available Tools
+
+### Page Management Tools
+
+Before drawing, manage pages to organize your diagrams:
+
+| Tool | Description |
+|------|-------------|
+| `get_pages` | List all pages with index, name, and current status |
+| `create_page` | Create new page and switch to it |
+| `select_page` | Switch to page by index or name |
+| `rename_page` | Rename current page |
+
+**Workflow**: Always create a new page before drawing a new diagram to avoid overwriting existing content.
+
+```
+1. create_page({ name: "Architecture Diagram" })
+2. update_diagram({ ... })
+```
 
 ### 1. `update_diagram` (RECOMMENDED for new diagrams)
 Use unified JSON format with automatic ELK layout. Best for:

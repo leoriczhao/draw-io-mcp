@@ -162,6 +162,53 @@ server.tool(
     }
 );
 
+server.tool(
+    'get_pages',
+    'Get list of all pages in the diagram.',
+    {},
+    async () => {
+        const result = await sendCommand('get_pages', {});
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    'create_page',
+    'Create a new page and switch to it.',
+    {
+        name: z.string().optional().describe('Name for the new page. Default: "New Page"')
+    },
+    async ({ name }) => {
+        const result = await sendCommand('create_page', { name });
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    'select_page',
+    'Switch to an existing page by index or name.',
+    {
+        index: z.number().optional().describe('Page index (0-based)'),
+        name: z.string().optional().describe('Page name')
+    },
+    async ({ index, name }) => {
+        const result = await sendCommand('select_page', { index, name });
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    'rename_page',
+    'Rename the current page.',
+    {
+        name: z.string().describe('New name for the current page')
+    },
+    async ({ name }) => {
+        const result = await sendCommand('rename_page', { name });
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+);
+
 // ============ Start ============
 async function main() {
     const transport = new StdioServerTransport();
