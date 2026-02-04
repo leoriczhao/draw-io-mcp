@@ -93,10 +93,28 @@ Draw.io MCP 是一个让 AI 助手（Claude）能够直接操作 Draw.io 画布�
   }
   ```
 
-#### execute_script Tool
-- **唯一暴露的 MCP 工具**
-- **参数**: `script` (string) - JavaScript 代码
-- **返回**: `{ success: boolean, result?: any, error?: string }`
+#### MCP Tools
+
+MCP 工具分为两类：
+
+**Drawing Tools (绘图工具)** - 直接操作图表内容
+
+| Tool | 描述 | 参数 |
+|------|------|------|
+| `update_diagram` | 创建/更新图表 (推荐) | `diagram` (JSON), `clearCanvas` |
+| `get_diagram` | 读取当前图表为 JSON | - |
+| `execute_script` | 执行原生 mxGraph 脚本 | `script` (JS code) |
+
+**Platform Tools (平台工具)** - 管理 Draw.io 应用状态
+
+| Tool | 描述 | 参数 |
+|------|------|------|
+| `get_pages` | 获取所有页面列表 | - |
+| `create_page` | 创建新页面并切换 | `name` |
+| `select_page` | 切换到指定页面 | `index` 或 `name` |
+| `rename_page` | 重命名当前页面 | `name` |
+
+**返回格式**: `{ success: boolean, result?: any, error?: string }`
 
 ### 核心函数
 
@@ -193,15 +211,31 @@ server.tool('execute_script', schema, async ({ script }) => {
 
 #### AI_HLP (Read-only Helpers)
 - **位置**: `window.AI_HLP`
-- **API**:
-  | 函数 | 返回值 | 描述 |
-  |------|--------|------|
-  | `getCanvasInfo()` | `{ pageCount, currentPageIndex, currentPageName, cellCount }` | 画布元信息 |
-  | `getAllCells()` | `[{ id, label, type, geometry }]` | 所有元素列表 |
-  | `getSelection()` | `[{ id, label, type }]` | 选中元素 |
-  | `exportSvg()` | `string` | SVG 导出 |
-  | `exportPng()` | `string` | PNG (Base64 Data URI) |
-  | `getXml()` | `string` | mxGraph XML |
+- **API 分类**:
+
+**Drawing Helpers (绘图查询)**
+
+| 函数 | 返回值 | 描述 |
+|------|--------|------|
+| `getDiagramJson()` | `{ nodes, edges, layout }` | 统一 JSON 格式 |
+| `getAllCells()` | `[{ id, label, type, geometry }]` | 所有元素列表 |
+| `getSelection()` | `[{ id, label, type }]` | 选中元素 |
+
+**Platform Helpers (平台查询)**
+
+| 函数 | 返回值 | 描述 |
+|------|--------|------|
+| `getCanvasInfo()` | `{ pageCount, currentPageIndex, currentPageName, cellCount }` | 画布元信息 |
+| `getPages()` | `[{ index, name, current }]` | 页面列表 |
+| `getCurrentPage()` | `{ index, name }` | 当前页面 |
+
+**Export Helpers (导出功能)**
+
+| 函数 | 返回值 | 描述 |
+|------|--------|------|
+| `exportSvg()` | `string` | SVG 导出 |
+| `exportPng()` | `string` | PNG (Base64 Data URI) |
+| `getXml()` | `string` | mxGraph XML |
 
 ### 边界约束
 

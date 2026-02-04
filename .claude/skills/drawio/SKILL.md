@@ -18,34 +18,54 @@ allowed-tools:
 - Flowcharts, architecture diagrams, mind maps, UML, ER diagrams
 - Any visual representation of structure or process
 
-## Available Tools
+## Tool Categories
 
-### Page Management Tools
+Tools are divided into two categories:
 
-Before drawing, manage pages to organize your diagrams:
+### Platform Tools (平台工具)
+Manage Draw.io application state, independent of diagram content.
 
-| Tool | Description |
-|------|-------------|
-| `get_pages` | List all pages with index, name, and current status |
-| `create_page` | Create new page and switch to it |
-| `select_page` | Switch to page by index or name |
-| `rename_page` | Rename current page |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get_pages` | List all pages | - |
+| `create_page` | Create new page and switch to it | `name` (optional) |
+| `select_page` | Switch to existing page | `index` or `name` |
+| `rename_page` | Rename current page | `name` |
 
-**Workflow**: Always create a new page before drawing a new diagram to avoid overwriting existing content.
+### Drawing Tools (绘图工具)
+Create and modify diagram content.
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `update_diagram` | Create/update diagram with auto-layout | `diagram` (JSON), `clearCanvas` |
+| `get_diagram` | Read current diagram as JSON | - |
+| `execute_script` | Execute native mxGraph script | `script` (JS code) |
+
+## Standard Workflow
+
+**ALWAYS follow this pattern for new diagrams:**
 
 ```
-1. create_page({ name: "Architecture Diagram" })
-2. update_diagram({ ... })
+1. create_page({ name: "Diagram Name" })  ← Avoid overwriting existing content
+2. update_diagram({ ... })                 ← Draw the diagram
 ```
 
-### 1. `update_diagram` (RECOMMENDED for new diagrams)
+**For modifying existing diagrams:**
+
+```
+1. select_page({ name: "Target Page" })    ← Switch to target page
+2. get_diagram()                           ← Read current state
+3. update_diagram({ ... })                 ← Apply modifications
+```
+
+## Drawing with `update_diagram`
+
 Use unified JSON format with automatic ELK layout. Best for:
 - Creating new diagrams with automatic layout
 - Adding nodes to existing diagrams
 - Automatic edge routing (no manual coordinates needed)
 
 ```javascript
-// Example: Create a simple flowchart
 {
   "nodes": [
     { "id": "start", "label": "Start", "width": 80, "height": 40, "fixed": false },
@@ -69,41 +89,17 @@ Use unified JSON format with automatic ELK layout. Best for:
 - `fixed: true` → Node keeps its x/y position
 - Edges are automatically routed to avoid crossings
 
-### 2. `get_diagram` (Read current diagram)
+## Reading with `get_diagram`
 Returns the current diagram as unified JSON. All nodes are marked `fixed: true`.
 
 Use this to:
 - Understand current diagram structure
 - Modify existing diagrams (read → modify → update)
 
-### 3. `execute_script` (Advanced: Direct mxGraph API)
+## Advanced: `execute_script`
 For fine-grained control when JSON format is insufficient.
 
-## Workflow Patterns
-
-### Pattern A: Create New Diagram (Recommended)
-```
-1. Define nodes and edges in JSON
-2. Set all nodes to fixed: false
-3. Call update_diagram
-4. ELK handles layout automatically
-```
-
-### Pattern B: Modify Existing Diagram
-```
-1. Call get_diagram to read current state
-2. Modify the JSON (add/remove/change nodes/edges)
-3. Keep existing nodes as fixed: true
-4. Set new nodes as fixed: false
-5. Call update_diagram
-```
-
-### Pattern C: Precise Control (Advanced)
-```
-1. Use execute_script with native mxGraph API
-2. Manually specify all coordinates
-3. See "Native mxGraph API" section below
-```
+---
 
 ## JSON Schema Reference
 
