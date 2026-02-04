@@ -213,14 +213,17 @@ Draw.loadPlugin(function(ui) {
                         const source = nodeMap[edge.source];
                         const target = nodeMap[edge.target];
                         if (source && target) {
-                            const style = edge.style || 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+                            // If ELK provided routing points, don't use orthogonalEdgeStyle (it overrides points)
+                            const hasElkPoints = edge.points && edge.points.length > 0;
+                            const defaultStyle = hasElkPoints ? 'rounded=1;' : 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+                            const style = edge.style || defaultStyle;
                             const label = toHtmlLabel(edge.label);
                             const edgeCell = graph.insertEdge(
                                 parent, edge.id, label,
                                 source, target, style
                             );
                             
-                            if (edge.points && edge.points.length > 0) {
+                            if (hasElkPoints) {
                                 edgeCell.geometry.points = edge.points.map(p => new mxPoint(p.x, p.y));
                             }
                         }
