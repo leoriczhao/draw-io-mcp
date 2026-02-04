@@ -88,11 +88,16 @@ Draw.loadPlugin(function(ui) {
             const nodes = [];
             const edges = [];
             
+            function fromHtmlLabel(text) {
+                if (!text) return '';
+                return String(text).replace(/<br\s*\/?>/gi, '\n');
+            }
+            
             for (const cell of cells) {
                 if (cell.vertex) {
                     nodes.push({
                         id: cell.id,
-                        label: cell.value || '',
+                        label: fromHtmlLabel(cell.value),
                         x: cell.geometry ? cell.geometry.x : 0,
                         y: cell.geometry ? cell.geometry.y : 0,
                         width: cell.geometry ? cell.geometry.width : 120,
@@ -105,7 +110,7 @@ Draw.loadPlugin(function(ui) {
                         id: cell.id,
                         source: cell.source ? cell.source.id : null,
                         target: cell.target ? cell.target.id : null,
-                        label: cell.value || '',
+                        label: fromHtmlLabel(cell.value),
                         style: cell.style || ''
                     });
                 }

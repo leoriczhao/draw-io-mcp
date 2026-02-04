@@ -147,10 +147,37 @@ Anchors control where edges connect to nodes using 0-1 relative coordinates:
 ### Layout Options
 ```javascript
 {
-  "algorithm": "layered",   // "layered" (auto) or "fixed" (manual)
+  "preset": "flowchart",    // Layout preset (see below)
   "direction": "DOWN",      // "DOWN", "UP", "LEFT", "RIGHT"
   "nodeSpacing": 50,        // Pixels between nodes in same layer
-  "layerSpacing": 80        // Pixels between layers
+  "layerSpacing": 80,       // Pixels between layers
+  "edgeRouting": "ORTHOGONAL", // "ORTHOGONAL" or "SPLINES"
+  "elkOptions": {}          // Advanced: raw ELK options override
+}
+```
+
+### Layout Presets
+Choose preset based on diagram type:
+
+| Preset | Best For | Direction | Edge Style |
+|--------|----------|-----------|------------|
+| `flowchart` | Process flows, decision trees | DOWN | Orthogonal |
+| `architecture` | System architecture, components | DOWN | Orthogonal, spacious |
+| `workflow` | Pipelines, data flows | RIGHT | Splines (curved) |
+| `tree` | Hierarchies, org charts | DOWN | Tree layout |
+| `mindmap` | Mind maps, brainstorming | RIGHT | Tree layout |
+| `compact` | Dense diagrams, limited space | DOWN | Tight spacing |
+| `spread` | Presentation, readability | DOWN | Extra spacing |
+
+**Example with preset:**
+```javascript
+{
+  "nodes": [...],
+  "edges": [...],
+  "layout": {
+    "preset": "workflow",
+    "direction": "RIGHT"
+  }
 }
 ```
 

@@ -7,18 +7,7 @@
  * - mxGraph script (used by Draw.io)
  */
 
-function createStandardPorts(nodeId, width, height) {
-    return [
-        { id: `${nodeId}_N`,  x: width/2, y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'NORTH' } },
-        { id: `${nodeId}_S`,  x: width/2, y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'SOUTH' } },
-        { id: `${nodeId}_E`,  x: width,   y: height/2, width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
-        { id: `${nodeId}_W`,  x: 0,       y: height/2, width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } },
-        { id: `${nodeId}_NE`, x: width,   y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
-        { id: `${nodeId}_NW`, x: 0,       y: 0,        width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } },
-        { id: `${nodeId}_SE`, x: width,   y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'EAST' } },
-        { id: `${nodeId}_SW`, x: 0,       y: height,   width: 1, height: 1, layoutOptions: { 'port.side': 'WEST' } }
-    ];
-}
+import { buildLayoutOptions } from './elk-presets.js';
 
 /**
  * Convert unified JSON to ELK graph format
@@ -26,16 +15,11 @@ function createStandardPorts(nodeId, width, height) {
  * @returns {Object} ELK graph format
  */
 export function jsonToElk(json) {
+    const layoutOptions = buildLayoutOptions(json.layout);
+    
     const elkGraph = {
         id: 'root',
-        layoutOptions: {
-            'elk.algorithm': json.layout?.algorithm === 'fixed' ? 'fixed' : 'layered',
-            'elk.direction': json.layout?.direction || 'DOWN',
-            'elk.spacing.nodeNode': String(json.layout?.nodeSpacing || 50),
-            'elk.layered.spacing.nodeNodeBetweenLayers': String(json.layout?.layerSpacing || 80),
-            'elk.edgeRouting': 'ORTHOGONAL',
-            'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
-        },
+        layoutOptions,
         children: [],
         edges: []
     };
@@ -48,8 +32,7 @@ export function jsonToElk(json) {
             id: node.id,
             width: width,
             height: height,
-            labels: [{ text: node.label || '' }],
-            ports: createStandardPorts(node.id, width, height)
+            labels: [{ text: node.label || '' }]
         };
 
         if (node.fixed && node.x !== undefined && node.y !== undefined) {
@@ -134,15 +117,15 @@ export function elkToJson(elkResult, originalJson) {
             const targetNode = nodeMap.get(edgeResult.target);
             
             if (sourceNode && section.startPoint) {
-                edgeResult.exitX = Math.max(0, Math.min(1, (section.startPoint.x - sourceNode.x) / sourceNode.width));
-                edgeResult.exitY = Math.max(0, Math.min(1, (section.startPoint.y - sourceNode.y) / sourceNode.height));
+                edgeResult.exitX = (section.startPoint.x - sourceNode.x) / sourceNode.width;
+                edgeResult.exitY = (section.startPoint.y - sourceNode.y) / sourceNode.height;
             }
             if (targetNode && section.endPoint) {
-                edgeResult.entryX = Math.max(0, Math.min(1, (section.endPoint.x - targetNode.x) / targetNode.width));
-                edgeResult.entryY = Math.max(0, Math.min(1, (section.endPoint.y - targetNode.y) / targetNode.height));
+                edgeResult.entryX = (section.endPoint.x - targetNode.x) / targetNode.width;
+                edgeResult.entryY = (section.endPoint.y - targetNode.y) / targetNode.height;
             }
             
-            if (section.bendPoints) {
+            if (section.bendPoints && section.bendPoints.length > 0) {
                 edgeResult.points = section.bendPoints;
             }
         }
@@ -192,12 +175,16 @@ export function jsonToMxScript(json, options = {}) {
     lines.push('    // Create edges');
     
     for (const edge of json.edges || []) {
-        const style = edge.style || 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+        let style = edge.style || 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
         const label = escapeString(edge.label || '');
+        
+        if (edge.exitX !== undefined) style += `exitX=${edge.exitX};`;
+        if (edge.exitY !== undefined) style += `exitY=${edge.exitY};`;
+        if (edge.entryX !== undefined) style += `entryX=${edge.entryX};`;
+        if (edge.entryY !== undefined) style += `entryY=${edge.entryY};`;
         
         lines.push(`    const edge_${edge.id} = graph.insertEdge(parent, '${edge.id}', '${label}', nodes['${edge.source}'], nodes['${edge.target}'], '${style}');`);
         
-        // Add routing points if available
         if (edge.points && edge.points.length > 0) {
             const pointsStr = edge.points.map(p => `new mxPoint(${p.x}, ${p.y})`).join(', ');
             lines.push(`    edge_${edge.id}.geometry.points = [${pointsStr}];`);
