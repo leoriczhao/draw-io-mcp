@@ -124,9 +124,25 @@ For fine-grained control when JSON format is insufficient.
   "source": "node_id",      // Required: source node id
   "target": "node_id",      // Required: target node id
   "label": "Edge Label",    // Optional: edge label
+  "sourceAnchor": { "x": 0.5, "y": 1 },  // Optional: exit point (0-1 relative)
+  "targetAnchor": { "x": 0.5, "y": 0 },  // Optional: entry point (0-1 relative)
   "style": "dashed=1;..."   // Optional: mxGraph style string
 }
 ```
+
+### Anchor Reference
+Anchors control where edges connect to nodes using 0-1 relative coordinates:
+
+| Position | x | y |
+|----------|---|---|
+| Top center | 0.5 | 0 |
+| Bottom center | 0.5 | 1 |
+| Left center | 0 | 0.5 |
+| Right center | 1 | 0.5 |
+| Top-left | 0 | 0 |
+| Top-right | 1 | 0 |
+| Bottom-left | 0 | 1 |
+| Bottom-right | 1 | 1 |
 
 ### Layout Options
 ```javascript
