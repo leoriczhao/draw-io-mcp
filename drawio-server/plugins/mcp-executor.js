@@ -203,17 +203,17 @@ Draw.loadPlugin(function(ui) {
                             .replace(/\n/g, '<br>');   // actual newline
                     }
 
-                    // Shape name to mxGraph style mapping
+                    // Shape name to mxGraph style mapping (with perimeter for proper edge connection)
                     const SHAPE_STYLES = {
                         // Basic
                         'rectangle': '',
                         'rounded': 'rounded=1;',
-                        'ellipse': 'shape=ellipse;',
-                        'diamond': 'shape=rhombus;',
-                        'triangle': 'shape=triangle;',
-                        'hexagon': 'shape=hexagon;',
-                        'parallelogram': 'shape=parallelogram;',
-                        'trapezoid': 'shape=trapezoid;',
+                        'ellipse': 'shape=ellipse;perimeter=ellipsePerimeter;',
+                        'diamond': 'shape=rhombus;perimeter=rhombusPerimeter;',
+                        'triangle': 'shape=triangle;perimeter=trianglePerimeter;',
+                        'hexagon': 'shape=hexagon;perimeter=hexagonPerimeter;',
+                        'parallelogram': 'shape=parallelogram;perimeter=parallelogramPerimeter;',
+                        'trapezoid': 'shape=trapezoid;perimeter=trapezoidPerimeter;',
                         // Flowchart
                         'process': 'shape=process;',
                         'document': 'shape=document;',
@@ -233,7 +233,7 @@ Draw.loadPlugin(function(ui) {
                         // UML
                         'umlActor': 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;',
                         'umlState': 'shape=umlState;',
-                        'umlLifeline': 'shape=umlLifeline;',
+                        'umlLifeline': 'shape=umlLifeline;perimeter=lifelinePerimeter;',
                         'umlFrame': 'shape=umlFrame;',
                         'umlBoundary': 'shape=umlBoundary;',
                         'umlEntity': 'shape=umlEntity;',
@@ -246,11 +246,11 @@ Draw.loadPlugin(function(ui) {
                         // Special
                         'cloud': 'shape=cloud;',
                         'actor': 'shape=actor;',
-                        'step': 'shape=step;',
+                        'step': 'shape=step;perimeter=stepPerimeter;',
                         'plus': 'shape=plus;',
                         'cross': 'shape=cross;',
-                        'startState': 'shape=startState;',
-                        'endState': 'shape=endState;'
+                        'startState': 'shape=startState;perimeter=ellipsePerimeter;',
+                        'endState': 'shape=endState;perimeter=ellipsePerimeter;'
                     };
 
                     // Color presets
