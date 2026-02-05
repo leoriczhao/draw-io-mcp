@@ -304,7 +304,16 @@ Draw.loadPlugin(function(ui) {
                         const target = nodeMap[edge.target];
                         if (source && target) {
                             const hasElkPoints = edge.points && edge.points.length > 0;
-                            let baseStyle = hasElkPoints ? 'rounded=0;' : 'edgeStyle=orthogonalEdgeStyle;rounded=0;';
+                            const hasElkAnchors = edge.exitX !== undefined || edge.entryX !== undefined;
+                            
+                            let baseStyle;
+                            if (hasElkPoints) {
+                                baseStyle = 'rounded=0;';
+                            } else if (hasElkAnchors) {
+                                baseStyle = 'rounded=0;';
+                            } else {
+                                baseStyle = 'edgeStyle=orthogonalEdgeStyle;rounded=0;';
+                            }
                             
                             if (edge.exitX !== undefined) {
                                 baseStyle += 'exitX=' + edge.exitX + ';';
