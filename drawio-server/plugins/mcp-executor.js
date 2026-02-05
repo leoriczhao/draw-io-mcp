@@ -303,30 +303,16 @@ Draw.loadPlugin(function(ui) {
                         const source = nodeMap[edge.source];
                         const target = nodeMap[edge.target];
                         if (source && target) {
-                            const hasElkPoints = edge.points && edge.points.length > 0;
-                            const hasElkAnchors = edge.exitX !== undefined || edge.entryX !== undefined;
+                            const hasPoints = edge.points && edge.points.length > 0;
                             
-                            let baseStyle;
-                            if (hasElkPoints) {
-                                baseStyle = 'rounded=0;';
-                            } else if (hasElkAnchors) {
-                                baseStyle = 'rounded=0;';
-                            } else {
-                                baseStyle = 'edgeStyle=orthogonalEdgeStyle;rounded=0;';
-                            }
+                            let baseStyle = hasPoints 
+                                ? 'edgeStyle=orthogonalEdgeStyle;rounded=0;'
+                                : 'rounded=0;';
                             
-                            if (edge.exitX !== undefined) {
-                                baseStyle += 'exitX=' + edge.exitX + ';';
-                            }
-                            if (edge.exitY !== undefined) {
-                                baseStyle += 'exitY=' + edge.exitY + ';';
-                            }
-                            if (edge.entryX !== undefined) {
-                                baseStyle += 'entryX=' + edge.entryX + ';';
-                            }
-                            if (edge.entryY !== undefined) {
-                                baseStyle += 'entryY=' + edge.entryY + ';';
-                            }
+                            if (edge.exitX !== undefined) baseStyle += 'exitX=' + edge.exitX + ';';
+                            if (edge.exitY !== undefined) baseStyle += 'exitY=' + edge.exitY + ';';
+                            if (edge.entryX !== undefined) baseStyle += 'entryX=' + edge.entryX + ';';
+                            if (edge.entryY !== undefined) baseStyle += 'entryY=' + edge.entryY + ';';
                             
                             const style = edge.style || baseStyle;
                             const label = toHtmlLabel(edge.label);
@@ -335,7 +321,7 @@ Draw.loadPlugin(function(ui) {
                                 source, target, style
                             );
                             
-                            if (hasElkPoints) {
+                            if (hasPoints) {
                                 edgeCell.geometry.points = edge.points.map(p => new mxPoint(p.x, p.y));
                             }
                         }
