@@ -55,10 +55,10 @@ allowed-tools:
 ```javascript
 {
   "nodes": [
-    { "id": "start", "label": "Start", "width": 80, "height": 40, "fixed": false, "style": "rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" },
-    { "id": "process", "label": "Process", "width": 120, "height": 60, "fixed": false, "style": "fillColor=#dae8fc;strokeColor=#6c8ebf;" },
-    { "id": "decision", "label": "OK?", "width": 100, "height": 60, "fixed": false, "style": "shape=rhombus;fillColor=#fff2cc;strokeColor=#d6b656;" },
-    { "id": "end", "label": "End", "width": 80, "height": 40, "fixed": false, "style": "rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" }
+    { "id": "start", "label": "Start", "shape": "rounded", "color": "success", "fixed": false },
+    { "id": "process", "label": "Process", "color": "primary", "fixed": false },
+    { "id": "decision", "label": "OK?", "shape": "diamond", "color": "warning", "fixed": false },
+    { "id": "end", "label": "End", "shape": "rounded", "color": "success", "fixed": false }
   ],
   "edges": [
     { "source": "start", "target": "process" },
@@ -80,7 +80,24 @@ allowed-tools:
 | `width` | No | Width in pixels (default: 120) |
 | `height` | No | Height in pixels (default: 60) |
 | `fixed` | Yes | `false` = auto-layout, `true` = keep x/y position |
-| `style` | No | mxGraph style string |
+| `shape` | No | Shape type (see below) |
+| `color` | No | Color preset: `primary`, `success`, `warning`, `error`, `purple`, `gray` |
+| `style` | No | Custom mxGraph style (overrides shape/color) |
+
+### Shape Types
+| Shape | Description | Use Case |
+|-------|-------------|----------|
+| `rectangle` | Rectangle (default) | General |
+| `rounded` | Rounded rectangle | Start/End |
+| `diamond` | Diamond | Decision |
+| `ellipse` | Ellipse | States |
+| `parallelogram` | Parallelogram | Input/Output |
+| `cylinder` | Cylinder | Database |
+| `document` | Document | Documents |
+| `cloud` | Cloud | Cloud services |
+| `umlActor` | Stick figure | Actor |
+
+See `reference/shapes.md` for full shape library.
 
 ### Edge Properties
 | Property | Required | Description |

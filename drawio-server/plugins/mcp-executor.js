@@ -203,8 +203,93 @@ Draw.loadPlugin(function(ui) {
                             .replace(/\n/g, '<br>');   // actual newline
                     }
 
+                    // Shape name to mxGraph style mapping
+                    const SHAPE_STYLES = {
+                        // Basic
+                        'rectangle': '',
+                        'rounded': 'rounded=1;',
+                        'ellipse': 'shape=ellipse;',
+                        'diamond': 'shape=rhombus;',
+                        'triangle': 'shape=triangle;',
+                        'hexagon': 'shape=hexagon;',
+                        'parallelogram': 'shape=parallelogram;',
+                        'trapezoid': 'shape=trapezoid;',
+                        // Flowchart
+                        'process': 'shape=process;',
+                        'document': 'shape=document;',
+                        'manualInput': 'shape=manualInput;',
+                        'dataStorage': 'shape=dataStorage;',
+                        'delay': 'shape=delay;',
+                        'display': 'shape=display;',
+                        'internalStorage': 'shape=internalStorage;',
+                        'loopLimit': 'shape=loopLimit;',
+                        'offPageConnector': 'shape=offPageConnector;',
+                        // Database
+                        'cylinder': 'shape=cylinder;',
+                        'cylinder2': 'shape=cylinder2;',
+                        'cylinder3': 'shape=cylinder3;',
+                        'datastore': 'shape=datastore;',
+                        'cube': 'shape=cube;',
+                        // UML
+                        'umlActor': 'shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;',
+                        'umlState': 'shape=umlState;',
+                        'umlLifeline': 'shape=umlLifeline;',
+                        'umlFrame': 'shape=umlFrame;',
+                        'umlBoundary': 'shape=umlBoundary;',
+                        'umlEntity': 'shape=umlEntity;',
+                        'umlControl': 'shape=umlControl;',
+                        // Containers
+                        'swimlane': 'shape=swimlane;',
+                        'folder': 'shape=folder;',
+                        'card': 'shape=card;',
+                        'note': 'shape=note;',
+                        // Special
+                        'cloud': 'shape=cloud;',
+                        'actor': 'shape=actor;',
+                        'step': 'shape=step;',
+                        'plus': 'shape=plus;',
+                        'cross': 'shape=cross;',
+                        'startState': 'shape=startState;',
+                        'endState': 'shape=endState;'
+                    };
+
+                    // Color presets
+                    const COLOR_PRESETS = {
+                        'primary': 'fillColor=#dae8fc;strokeColor=#6c8ebf;',
+                        'success': 'fillColor=#d5e8d4;strokeColor=#82b366;',
+                        'warning': 'fillColor=#fff2cc;strokeColor=#d6b656;',
+                        'error': 'fillColor=#f8cecc;strokeColor=#b85450;',
+                        'purple': 'fillColor=#e1d5e7;strokeColor=#9673a6;',
+                        'gray': 'fillColor=#f5f5f5;strokeColor=#666666;'
+                    };
+
+                    function buildNodeStyle(node) {
+                        let style = 'whiteSpace=wrap;html=1;';
+                        
+                        // Add shape style
+                        if (node.shape && SHAPE_STYLES[node.shape]) {
+                            style += SHAPE_STYLES[node.shape];
+                        } else if (!node.style) {
+                            style += 'rounded=1;';
+                        }
+                        
+                        // Add color preset
+                        if (node.color && COLOR_PRESETS[node.color]) {
+                            style += COLOR_PRESETS[node.color];
+                        } else if (!node.style) {
+                            style += 'fillColor=#dae8fc;strokeColor=#6c8ebf;';
+                        }
+                        
+                        // Override with custom style if provided
+                        if (node.style) {
+                            style += node.style;
+                        }
+                        
+                        return style;
+                    }
+
                     for (const node of diagram.nodes || []) {
-                        const style = node.style || 'whiteSpace=wrap;html=1;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;';
+                        const style = buildNodeStyle(node);
                         const label = toHtmlLabel(node.label);
                         const vertex = graph.insertVertex(
                             parent, node.id, label,
