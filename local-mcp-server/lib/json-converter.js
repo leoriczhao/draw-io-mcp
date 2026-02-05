@@ -107,6 +107,8 @@ export function jsonToElk(json) {
         }
 
         elkNode._style = node.style;
+        elkNode._shape = node.shape;
+        elkNode._color = node.color;
         elkNode._shapeType = detectShapeType(node.style);
         elkGraph.children.push(elkNode);
     }
@@ -158,6 +160,8 @@ export function elkToJson(elkResult, originalJson) {
             height: elkNode.height,
             fixed: true,
             style: elkNode._style || nodeStyles.get(elkNode.id) || '',
+            shape: elkNode._shape,
+            color: elkNode._color,
             _shapeType: elkNode._shapeType || detectShapeType(elkNode._style || nodeStyles.get(elkNode.id))
         };
         result.nodes.push(nodeData);
