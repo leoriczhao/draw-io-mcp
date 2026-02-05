@@ -219,12 +219,20 @@ Draw.loadPlugin(function(ui) {
                         const target = nodeMap[edge.target];
                         if (source && target) {
                             const hasElkPoints = edge.points && edge.points.length > 0;
-                            let baseStyle = hasElkPoints ? 'rounded=1;' : 'edgeStyle=orthogonalEdgeStyle;rounded=1;';
+                            let baseStyle = hasElkPoints ? 'rounded=0;' : 'edgeStyle=orthogonalEdgeStyle;rounded=0;';
                             
-                            if (edge.exitX !== undefined) baseStyle += 'exitX=' + edge.exitX + ';';
-                            if (edge.exitY !== undefined) baseStyle += 'exitY=' + edge.exitY + ';';
-                            if (edge.entryX !== undefined) baseStyle += 'entryX=' + edge.entryX + ';';
-                            if (edge.entryY !== undefined) baseStyle += 'entryY=' + edge.entryY + ';';
+                            if (edge.exitX !== undefined) {
+                                baseStyle += 'exitX=' + edge.exitX + ';exitPerimeter=0;';
+                            }
+                            if (edge.exitY !== undefined) {
+                                baseStyle += 'exitY=' + edge.exitY + ';';
+                            }
+                            if (edge.entryX !== undefined) {
+                                baseStyle += 'entryX=' + edge.entryX + ';entryPerimeter=0;';
+                            }
+                            if (edge.entryY !== undefined) {
+                                baseStyle += 'entryY=' + edge.entryY + ';';
+                            }
                             
                             const style = edge.style || baseStyle;
                             const label = toHtmlLabel(edge.label);
