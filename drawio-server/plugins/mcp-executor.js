@@ -307,13 +307,13 @@ Draw.loadPlugin(function(ui) {
                             let baseStyle = hasElkPoints ? 'rounded=0;' : 'edgeStyle=orthogonalEdgeStyle;rounded=0;';
                             
                             if (edge.exitX !== undefined) {
-                                baseStyle += 'exitX=' + edge.exitX + ';exitPerimeter=0;';
+                                baseStyle += 'exitX=' + edge.exitX + ';';
                             }
                             if (edge.exitY !== undefined) {
                                 baseStyle += 'exitY=' + edge.exitY + ';';
                             }
                             if (edge.entryX !== undefined) {
-                                baseStyle += 'entryX=' + edge.entryX + ';entryPerimeter=0;';
+                                baseStyle += 'entryX=' + edge.entryX + ';';
                             }
                             if (edge.entryY !== undefined) {
                                 baseStyle += 'entryY=' + edge.entryY + ';';
